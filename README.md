@@ -6,7 +6,7 @@ Install the required websockets library using:
 ```
 pip install websockets
 ```
-For MacOS, install the required websockets library using
+For MacOS, install the required websockets library using:
 ```
 pip3 install websockets
 ```
@@ -37,7 +37,7 @@ Server started on ws://localhost:8765
 ```
 
 ### 2. Start Clients
-Run both clients in separate terminal windows for each.
+Run both clients in separate terminal windows for each (for MacOS, use python3 instead of python).
 #### Client 1:
 ```bash
 python client1.py
