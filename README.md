@@ -2,14 +2,11 @@
 This project consists of a WebSocket server and two client applications that communicate with the server asynchronously using Python's websockets library.
 ## Prerequisites
 Ensure you have [Python](https://www.python.org/downloads/) installed on your system.
-Install the required websockets library using:
+Install the required websockets library using (for MacOS, use pip3 instead):
 ```
 pip install websockets
 ```
-For MacOS, install the required websockets library using:
-```
-pip3 install websockets
-```
+
 ## Cloning the Repository
 To get a copy of this project on your local machine, follow these steps:
 1. Open a terminal or command prompt.
