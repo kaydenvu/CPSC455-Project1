@@ -1,11 +1,20 @@
 # WebSocket Server-Client Application
 This project consists of a WebSocket server and two client applications that communicate with the server asynchronously using Python's websockets library.
 ## Prerequisites
-Ensure you have Python installed on your system.
+Ensure you have [Python](https://www.python.org/downloads/) installed on your system.
 Install the required websockets library using:
 ```
 pip install websockets
 ```
+## Cloning the Repository
+To get a copy of this project on your local machine, follow these steps:
+1. Open a terminal or command prompt.
+2. Navigate to the directory where you want to clone the repository.
+3. Run the following command:
+```
+git clone https://github.com/kaydenvu/CPSC455-Project1
+```
+
 ## Files Overview
 * server.py - The WebSocket server that listens for client connections and echoes received messages.
 * client1.py - The first client application that connects to the server and sends/receives messages.
