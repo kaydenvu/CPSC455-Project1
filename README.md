@@ -6,6 +6,10 @@ Install the required websockets library using:
 ```
 pip install websockets
 ```
+For MacOS, install the required websockets library using
+```
+pip3 install websockets
+```
 ## Cloning the Repository
 To get a copy of this project on your local machine, follow these steps:
 1. Open a terminal or command prompt.
@@ -33,7 +37,7 @@ Server started on ws://localhost:8765
 ```
 
 ### 2. Start Clients
-In separate terminal windows, run each client.
+Run both clients in separate terminal windows for each.
 #### Client 1:
 ```bash
 python client1.py
