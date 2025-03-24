@@ -5,6 +5,12 @@
     <title>Chat Room</title>
 </head>
 <body>
+    <div style="text-align: right; margin-bottom: 10px;">
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
+    </div>
     <!-- Top menu for chat room switching -->
     <div id="chat-room-menu">
         <ul id="chat-rooms-list"></ul>

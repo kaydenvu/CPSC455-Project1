@@ -23,14 +23,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
 
+        # Get the authenticated username, or assign 'Anonymous' if not logged in
+        self.user_name = self.scope["user"].username if self.scope["user"].is_authenticated else "Anonymous"
+
         # Initialize the room in active_users if not exists
         if self.room_group_name not in active_users:
             active_users[self.room_group_name] = []
 
-        # Assign user number based on current count
-        user_number = len(active_users[self.room_group_name]) + 1
-        self.user_name = f'User{user_number}'
-        
         # Store the user in the active users list
         active_users[self.room_group_name].append(self.user_name)
 
