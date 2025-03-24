@@ -5,45 +5,56 @@
     <title>Chat Room</title>
 </head>
 <body>
-    <h1>{{ room_name}}</h1>
-    <textarea id="chat-log" cols="100" rows="20"></textarea><br>
+    <!-- Top menu for chat room switching -->
+    <div id="chat-room-menu">
+        <ul id="chat-rooms-list"></ul>
+    </div>
+
+    <h1 id="current-room-name">{{ room_name }}</h1>
+
+    <textarea id="chat-log" cols="100" rows="20" readonly></textarea><br>
     <input id="chat-message-input" type="text" size="100"><br>
     <input id="chat-message-submit" type="button" value="Send">
-    <input id="chat-message-new" type="button" value="Create new chat">
+
     {{ room_name|json_script:"room-name" }}
+
     <script>
         const roomName = JSON.parse(document.getElementById('room-name').textContent);
-
-        // Create func where user # increments when another open in browswer
-
         const chatSocket = new WebSocket(
-            'ws://'
-            + window.location.host
-            + '/ws/chat/'
-            + roomName
-            + '/'
+            'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
         );
-        
-        // After triggering the send button, output the message in chat-log box
+
+        // Function to load available chat rooms (this can be fetched dynamically from the backend)
+        function loadChatRooms() {
+            // Example chat rooms (you can dynamically generate this from the backend)
+            const chatRooms = ['Room1', 'Room2', 'Room3'];
+            const chatRoomsList = document.getElementById('chat-rooms-list');
+            chatRoomsList.innerHTML = '';
+
+            chatRooms.forEach(room => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="#" onclick="switchChat('${room}')">${room}</a>`;
+                chatRoomsList.appendChild(li);
+            });
+        }
+
+        // Switch to another chat room when clicked
+        function switchChat(newRoom) {
+            window.location.href = `/chat/${newRoom}/`;
+        }
+
+        // Listen for new messages from the WebSocket
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
             document.querySelector('#chat-log').value += (data.message + '\n');
         };
-        
 
-        chatSocket.onclose = function(e) {
-            console.error('Chat socket closed unexpectedly');
+        // Close WebSocket on page unload
+        window.onbeforeunload = function() {
+            chatSocket.close();
         };
 
-        // Responds to 'Enter' key for sending input
-        document.querySelector('#chat-message-input').focus();
-        document.querySelector('#chat-message-input').onkeyup = function(e) {
-            if (e.key === 'Enter') {  // enter, return
-                document.querySelector('#chat-message-submit').click();
-            }
-        };
-
-        // Responds to 'mouse_click' even for sending input
+        // Send message when the 'Send' button is clicked
         document.querySelector('#chat-message-submit').onclick = function(e) {
             const messageInputDom = document.querySelector('#chat-message-input');
             const message = messageInputDom.value;
@@ -52,6 +63,16 @@
             }));
             messageInputDom.value = '';
         };
+
+        // Send message when the 'Enter' key is pressed
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.key === 'Enter') {
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+
+        // Load available chat rooms on page load
+        loadChatRooms();
     </script>
 </body>
 </html>

@@ -1,11 +1,7 @@
 # WebSocket Server-Client Application
-This project consists of a WebSocket server and two client applications that communicate with the server asynchronously using Python's websockets library.
+This project consists of a WebSocket server built with Django Channels for client applications that communicate with the server asynchronously.
 ## Prerequisites
 Ensure you have [Python](https://www.python.org/downloads/) installed on your system.
-Install the required websockets library using (for MacOS, use pip3 instead):
-```
-pip install websockets
-```
 
 ## Cloning the Repository
 To get a copy of this project on your local machine, follow these steps:
@@ -15,45 +11,35 @@ To get a copy of this project on your local machine, follow these steps:
 ```
 git clone https://github.com/kaydenvu/CPSC455-Project1
 ```
-
-## Files Overview
-* server.py - The WebSocket server that listens for client connections and echoes received messages.
-* client1.py - The first client application that connects to the server and sends/receives messages.
-* client2.py - The second client application, similar to client1.py, demonstrating multiple client support.
+## Setup before running the application
+1. Open an integrated terminal in the mynewsite directory.
+2. Create a virtual environment using the following command in PowerShell:
+```
+python -m venv mynewsite
+```
+3. Activate the virtual environment:
+- On Windows (PowerShell):
+    ```
+    mynewsite\Scripts\activate
+    ```
+- On macOS/Linux:
+    ```
+    source mynewsite/bin/activate
+    ```
+4. Install the required dependencies:
+```
+pip install -r requirements.txt
+```
 
 ## Running the Application
 
 ### 1. Start the Server
-First, run the WebSocket server:
+To start the Django development server and enable WebSocket communication, run:
 ```
-python server.py
+python manage.py runserver
 ```
-You should see an output indicating the server has started:
-```
-Server started on ws://localhost:8765
-```
+Then, open your browser and go to ``` http://127.0.0.1:8000 ``` to access the application.
 
-### 2. Start Clients
-Run both clients in separate terminal windows for each (for MacOS, use python3 instead of python).
-#### Client 1:
-```bash
-python client1.py
-```
-#### Client 2:
-```bash
-python client2.py
-```
-Once connected, each client will send an initial "Hello" message to the server and receive an echoed response.
-
-### 3. Sending Messages
-
-After the initial connection, each client can send messages to the server via the terminal. The server will echo the messages back.\
-Example interaction in a client terminal:
-```
-Client 1: Enter message to send (or 'exit' to quit): Hello, Server!
-Client 1 received: Hello, Server!
-```
-To exit the client, type <mark>exit</mark>.
 
 ### 4. Stopping the Server
 To stop the server, use <mark>Ctrl+C</mark> in the terminal where the server is running.

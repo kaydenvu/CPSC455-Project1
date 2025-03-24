@@ -1,4 +1,5 @@
 from django.db import models
+<<<<<<< HEAD
 from django.contrib.auth.models import User
 
 class UserProfile(models.Model):
@@ -22,3 +23,14 @@ class Keys(models.Model):
 
     def __str__(self):
         return f"{self.user}"
+=======
+
+class ChatRoom(models.Model):
+    name = models.CharField(max_length=255)
+
+class ChatMessage(models.Model):
+    room = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE)
+    username = models.CharField(max_length=255)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+>>>>>>> a1963587c2ee2ee15f88e55d5f6e20b535cc7cf1
