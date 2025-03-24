@@ -1,8 +1,22 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+import os
+from datetime import datetime
 
 # Dictionary to track users per room
 active_users = {}
+
+# Log file location (can be adjusted to the path you prefer)
+LOG_FILE_PATH = 'chat_logs.txt'
+
+def log_message(room_name, user_name, message):
+    """Function to log the message with a timestamp to a text file."""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_message = f"[{timestamp}] {room_name} - {user_name}: {message}\n"
+    
+    # Ensure the file exists and append the message to it
+    with open(LOG_FILE_PATH, 'a') as log_file:
+        log_file.write(log_message)
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -37,6 +51,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
+        # Log this event to the file
+        log_message(self.room_name, 'System', f'{self.user_name} has joined the chat!')
+
     async def disconnect(self, close_code):
         # Remove user from active users list
         if self.room_group_name in active_users and self.user_name in active_users[self.room_group_name]:
@@ -47,6 +64,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+
+        # Log this event to the file
+        log_message(self.room_name, 'System', f'{self.user_name} has left the chat.')
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -60,6 +80,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message': f'{self.user_name}: {message}'
             }
         )
+
+        # Log the message to the file
+        log_message(self.room_name, self.user_name, message)
 
     async def chat_message(self, event):
         message = event['message']
