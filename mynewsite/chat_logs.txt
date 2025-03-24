@@ -1,0 +1,16 @@
+[2025-03-23 23:14:19] 1 - System: User1 has joined the chat!
+[2025-03-23 23:14:20] 1 - System: User1 has left the chat.
+[2025-03-23 23:14:20] Room1 - System: User1 has joined the chat!
+[2025-03-23 23:14:21] Room1 - System: User1 has left the chat.
+[2025-03-23 23:14:21] Room2 - System: User1 has joined the chat!
+[2025-03-23 23:14:21] Room2 - System: User1 has left the chat.
+[2025-03-23 23:14:21] Room3 - System: User1 has joined the chat!
+[2025-03-23 23:14:24] Room3 - User1: e
+[2025-03-23 23:14:26] Room3 - User1: e
+[2025-03-23 23:14:27] Room3 - System: User1 has left the chat.
+[2025-03-23 23:14:27] Room3 - System: User1 has joined the chat!
+[2025-03-23 23:14:27] Room3 - System: User1 has left the chat.
+[2025-03-23 23:14:27] Room2 - System: User1 has joined the chat!
+[2025-03-23 23:14:28] Room2 - System: User1 has left the chat.
+[2025-03-23 23:14:28] Room1 - System: User1 has joined the chat!
+[2025-03-23 23:15:22] Room1 - System: User1 has left the chat.

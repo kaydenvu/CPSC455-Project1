@@ -25,7 +25,7 @@ def Signup(request):
 
     # Check if the user is authenticated; if so, redirect to the dashboard
     if request.user.is_authenticated:
-        return redirect('chat')
+        return redirect('/chat')
 
     # Process the POST request to create a new user
     if request.method == "POST":
@@ -58,12 +58,11 @@ def Signup(request):
             user_type_obj = user_type(user=user, type="regular")
             user_type_obj.save()
             # Redirect to the login page
-            return redirect("registration:login")
+            return redirect("/login")
         else:
             # If the form is invalid, return an error message
-            return HttpResponse({form})
-            # return HttpResponse(
-            #     "<script>alert('Please enter valid details!'); window.location.href='/register';</script>")
+            return HttpResponse(
+                "<script>alert('Please enter valid details!'); window.location.href='/register';</script>")
     return render(request, "registration/signup.html")
 
 
