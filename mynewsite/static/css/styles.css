@@ -1,0 +1,64 @@
+/* General Body Styles */
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f4f4f4;
+    margin: 0;
+}
+
+/* Main Container */
+.container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+}
+
+/* Heading Style */
+h1 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Paragraph Text */
+p {
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 30px;
+}
+
+/* Button Styles */
+button {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+/* Button Hover Effect */
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Register Button */
+.register-btn {
+    background-color: #28a745;
+}
+
+/* Register Button Hover Effect */
+.register-btn:hover {
+    background-color: #218838;
+}

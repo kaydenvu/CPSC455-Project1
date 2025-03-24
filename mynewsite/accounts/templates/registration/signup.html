@@ -1,0 +1,48 @@
+<!-- accounts/templates/registration/signup.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="static '/../../../../static/css/styles.css"> <!-- Add your CSS link here -->
+</head>
+<body>
+    <div class="signup-container">
+        <h1>Sign Up</h1>
+        
+        <!-- Display random fact if passed from the view -->
+        {% if fact %}
+        <div class="fact">
+            <p><strong>Random Fact:</strong> {{ fact.fact }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Registration form -->
+        <form method="POST">
+            {% csrf_token %}
+            
+            <!-- Username field -->
+            <div class="form-field">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required>
+            </div>
+            
+            <!-- Password field -->
+            <div class="form-field">
+                <label for="password1">Password</label>
+                <input type="password" name="password1" id="password1" required>
+            </div>
+            
+            <!-- Confirm Password field -->
+            <div class="form-field">
+                <label for="password2">Confirm Password</label>
+                <input type="password" name="password2" id="password2" required>
+            </div>
+            
+            <!-- Submit button -->
+            <button type="submit">Sign Up</button>
+        </form>
+    </div>
+</body>
+</html>
