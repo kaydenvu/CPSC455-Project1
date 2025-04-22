@@ -76,7 +76,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'mynewsite.wsgi.application'
+WSGI_APPLICATION = 'api.wsgi.app'
 
 
 # Database
