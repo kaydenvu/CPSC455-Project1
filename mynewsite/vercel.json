@@ -1,8 +1,0 @@
-{
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "mynewsite/wsgi.py"
-      }
-    ]
-  }

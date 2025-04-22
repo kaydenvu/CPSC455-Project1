@@ -137,3 +137,10 @@
 [2025-03-24 01:16:21] Room3 - System: tester2 has joined the chat!
 [2025-03-24 01:16:23] Room3 - System: tester1 has left the chat.
 [2025-03-24 01:16:23] Room3 - System: tester1 has joined the chat!
+[2025-04-22 00:45:56] 3 - System: tester has joined the chat!
+[2025-04-22 00:45:59] 3 - tester: hi
+[2025-04-22 00:46:07] 3 - System: tester has joined the chat!
+[2025-04-22 00:46:10] 3 - tester: hola
+[2025-04-22 00:46:13] 3 - tester: naur
+[2025-04-22 00:46:14] 3 - System: tester has left the chat.
+[2025-04-22 00:46:16] 3 - System: tester has left the chat.
