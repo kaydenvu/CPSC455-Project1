@@ -144,3 +144,10 @@
 [2025-04-22 00:46:13] 3 - tester: naur
 [2025-04-22 00:46:14] 3 - System: tester has left the chat.
 [2025-04-22 00:46:16] 3 - System: tester has left the chat.
+[2025-04-22 00:59:43] 3 - System: tester has joined the chat!
+[2025-04-22 00:59:46] 3 - System: tester has left the chat.
+[2025-04-22 00:59:46] Room3 - System: tester has joined the chat!
+[2025-04-22 01:09:15] 1 - System: tester has joined the chat!
+[2025-04-22 01:10:04] 1 - System: tester has left the chat.
+[2025-04-22 01:23:46] 1 - System: tester has joined the chat!
+[2025-04-22 01:23:48] 1 - System: tester has left the chat.
