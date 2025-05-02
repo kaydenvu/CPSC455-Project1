@@ -2,33 +2,70 @@
 {% load static %}
 <html>
 <head>
-    <meta charset="utf-8"/>
-    <title>Chat Rooms</title>
-    <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <meta charset="utf-8"/>
+  <title>Chat Rooms</title>
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
 </head>
 <body>
-    <div style="text-align: right; margin-bottom: 10px;">
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit">Logout</button>
-        </form>
-    </div>
-    What chat room would you like to enter?<br>
-    <input id="room-name-input" type="text" size="100"><br>
-    <input id="room-name-submit" type="button" value="Enter">
+  <div class="container">
+    <!-- header with logout -->
+    <header style="display:flex; justify-content:space-between; align-items:center;">
+      <h1>Chat Rooms</h1>
+      <form action="{% url 'logout' %}" method="post" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+      </form>
+    </header>
 
-    <script>
-        document.querySelector('#room-name-input').focus();
-        document.querySelector('#room-name-input').onkeyup = function(e) {
-            if (e.key === 'Enter') {  // enter, return
-                document.querySelector('#room-name-submit').click();
-            }
-        };
+    <!-- existing rooms -->
+    <section>
+      <h2>Available Rooms</h2>
+      <ul class="room-list">
+        {% for rm in rooms %}
+          <li>
+            <form action="{% url 'room' rm %}" method="get" style="display:inline;">
+              <button type="submit">{{ rm|title }}</button>
+            </form>
+          </li>
+        {% empty %}
+          <li>No rooms yet.</li>
+        {% endfor %}
+      </ul>
+    </section>
 
-        document.querySelector('#room-name-submit').onclick = function(e) {
-            var roomName = document.querySelector('#room-name-input').value;
-            window.location.pathname = '/chat/' + roomName + '/';
-        };
-    </script>
+    <!-- create‐or‐join -->
+    <section>
+      <h2>Create or Join a Room</h2>
+      <div class="room-input-group">
+        <input
+          id="room-name-input"
+          class="room-input"
+          type="text"
+          placeholder="Enter room name"
+        >
+        <button
+          id="room-name-submit"
+          class="go-btn"
+          type="button"
+        >
+          Go
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const input = document.getElementById('room-name-input');
+    input.focus();
+    input.onkeyup = e => {
+      if (e.key === 'Enter') document.getElementById('room-name-submit').click();
+    };
+    document.getElementById('room-name-submit').onclick = () => {
+      const name = input.value.trim();
+      if (name) {
+        window.location.pathname = `/chat/${encodeURIComponent(name)}/`;
+      }
+    };
+  </script>
 </body>
 </html>

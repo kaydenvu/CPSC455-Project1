@@ -1,85 +1,66 @@
 <!DOCTYPE html>
+{% load static %}
 <html>
 <head>
-    <meta charset="utf-8"/>
-    <title>Chat Room</title>
+  <meta charset="utf-8"/>
+  <title>Chat: {{ room_name|title }}</title>
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
 </head>
 <body>
-    <div style="text-align: right; margin-bottom: 10px;">
-        <form action="{% url 'logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit">Logout</button>
+  <div class="container chat-container">
+    <!-- Header: Title, Logout, Back Link -->
+    <header class="chat-header">
+      <h1 class="chat-title">{{ room_name|title }}</h1>
+      <div>
+        <form action="{% url 'logout' %}" method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit">Logout</button>
         </form>
+        <a href="{% url 'index' %}" class="back-link">← All rooms</a>
+      </div>
+    </header>
+
+    <!-- Main Flex Container: Room List + Chat Area -->
+    <div class="chat-main">
+      <!-- Left: Room Navigation -->
+      <nav class="chat-room-nav">
+        <h2>Rooms</h2>
+        <ul class="room-list">
+          {% for rm in rooms %}
+            <li>
+              <form action="{% url 'room' rm %}" method="get">
+                <button type="submit"
+                  {% if rm == room_name %}style="font-weight:bold;"{% endif %}>
+                  {{ rm|title }}
+                </button>
+              </form>
+            </li>
+          {% empty %}
+            <li>No active rooms.</li>
+          {% endfor %}
+        </ul>
+      </nav>
+
+      <!-- Right: Chat Area -->
+      <section class="chat-area">
+        <textarea id="chat-log" class="chat-log" readonly></textarea>
+        <div class="chat-input-group">
+          <input id="chat-message-input" type="text" placeholder="Type your message…">
+          <input type="file" id="chat-file-input">
+          <button id="chat-message-submit" class="send-btn">Send</button>
+        </div>
+      </section>
     </div>
-    <!-- Top menu for chat room switching -->
-    <div id="chat-room-menu">
-        <ul id="chat-rooms-list"></ul>
-    </div>
+  </div>
 
-    <h1 id="current-room-name">{{ room_name }}</h1>
+  <!-- embed the room-name JSON into the page for app.js -->
+  {{ room_name|json_script:"room-name" }}
+  <script>
+    // construct the keys‑fetch URL prefix
+    window.KEYS_URL = "{% url 'room-keys' %}?room=";
+  </script>
 
-    <textarea id="chat-log" cols="100" rows="20" readonly></textarea><br>
-    <input id="chat-message-input" type="text" size="100"><br>
-    <input id="chat-message-submit" type="button" value="Send">
-
-    {{ room_name|json_script:"room-name" }}
-
-    <script>
-        const roomName = JSON.parse(document.getElementById('room-name').textContent);
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const chatSocket = new WebSocket(
-            `${protocol}://${window.location.host}/ws/chat/${roomName}/`
-        );
-
-        // Function to load available chat rooms (this can be fetched dynamically from the backend)
-        function loadChatRooms() {
-            // Example chat rooms (you can dynamically generate this from the backend)
-            const chatRooms = ['Room1', 'Room2', 'Room3'];
-            const chatRoomsList = document.getElementById('chat-rooms-list');
-            chatRoomsList.innerHTML = '';
-
-            chatRooms.forEach(room => {
-                const li = document.createElement('li');
-                li.innerHTML = `<a href="#" onclick="switchChat('${room}')">${room}</a>`;
-                chatRoomsList.appendChild(li);
-            });
-        }
-
-        // Switch to another chat room when clicked
-        function switchChat(newRoom) {
-            window.location.href = `/chat/${newRoom}/`;
-        }
-
-        // Listen for new messages from the WebSocket
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            document.querySelector('#chat-log').value += (data.message + '\n');
-        };
-
-        // Close WebSocket on page unload
-        window.onbeforeunload = function() {
-            chatSocket.close();
-        };
-
-        // Send message when the 'Send' button is clicked
-        document.querySelector('#chat-message-submit').onclick = function(e) {
-            const messageInputDom = document.querySelector('#chat-message-input');
-            const message = messageInputDom.value;
-            chatSocket.send(JSON.stringify({
-                'message': message
-            }));
-            messageInputDom.value = '';
-        };
-
-        // Send message when the 'Enter' key is pressed
-        document.querySelector('#chat-message-input').onkeyup = function(e) {
-            if (e.key === 'Enter') {
-                document.querySelector('#chat-message-submit').click();
-            }
-        };
-
-        // Load available chat rooms on page load
-        loadChatRooms();
-    </script>
+  <!-- load your chat‐app script with defer so it runs after the DOM is parsed -->
+  <script defer src="{% static 'js/app.js' %}?v={{ STATIC_VERSION }}"></script>
 </body>
 </html>

@@ -1,92 +1,182 @@
-from channels.generic.websocket import AsyncWebsocketConsumer
 import json
-import os
-from datetime import datetime
+import base64
+import uuid
+import asyncio
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.utils import timezone
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
-# Dictionary to track users per room
-active_users = {}
-
-# Log file location (can be adjusted to the path you prefer)
-LOG_FILE_PATH = 'chat_logs.txt'
-
-def log_message(room_name, user_name, message):
-    """Function to log the message with a timestamp to a text file."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_message = f"[{timestamp}] {room_name} - {user_name}: {message}\n"
-    
-    # Ensure the file exists and append the message to it
-    with open(LOG_FILE_PATH, 'a') as log_file:
-        log_file.write(log_message)
+from .models import ChatRoom, ChatMessage
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f'chat_{self.room_name}'
+        self.room_group_name = f"chat_{self.room_name}"
 
-        # Get the authenticated username, or assign 'Anonymous' if not logged in
-        self.user_name = self.scope["user"].username if self.scope["user"].is_authenticated else "Anonymous"
+        # Ensure the chat room exists
+        self.room, _ = await self.get_or_create_room(self.room_name)
 
-        # Initialize the room in active_users if not exists
-        if self.room_group_name not in active_users:
-            active_users[self.room_group_name] = []
-
-        # Store the user in the active users list
-        active_users[self.room_group_name].append(self.user_name)
-
-        # Add user to the WebSocket group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-
+        # Join the channel group
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        # Notify others in the chat
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': f'{self.user_name} has joined the chat!'
-            }
-        )
+        # Start the heartbeat task
+        self.heartbeat_task = asyncio.create_task(self._send_heartbeat())
 
-        # Log this event to the file
-        log_message(self.room_name, 'System', f'{self.user_name} has joined the chat!')
+        # Load and send last 50 messages (plaintext only)
+        last_messages = await self.get_last_messages(self.room, 50)
+        for msg in last_messages:
+            await self.send(text_data=json.dumps({
+                "user":      msg.user.username if msg.user else "Anonymous",
+                "message":   msg.content,
+                "timestamp": msg.timestamp.isoformat(),
+            }))
+
+        # Announce that a user has joined
+        user = self.scope['user'] if self.scope['user'].is_authenticated else None
+        username = user.username if user else 'Anonymous'
+        join_event = {
+            'type': 'chat_message',
+            'user': 'System',
+            'message': f"{username} has joined the chat.",
+            'timestamp': timezone.now().isoformat(),
+        }
+        await self.channel_layer.group_send(self.room_group_name, join_event)
 
     async def disconnect(self, close_code):
-        # Remove user from active users list
-        if self.room_group_name in active_users and self.user_name in active_users[self.room_group_name]:
-            active_users[self.room_group_name].remove(self.user_name)
+        self.heartbeat_task.cancel()
+        # Leave the group
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
-        # Remove user from the WebSocket group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-
-        # Log this event to the file
-        log_message(self.room_name, 'System', f'{self.user_name} has left the chat.')
-
+        # Announce leave
+        user = self.scope['user'] if self.scope['user'].is_authenticated else None
+        username = user.username if user else 'Anonymous'
+        leave_event = {
+            'type': 'chat_message',
+            'user': 'System',
+            'message': f"{username} has left the chat.",
+            'timestamp': timezone.now().isoformat(),
+        }
+        await self.channel_layer.group_send(self.room_group_name, leave_event)
+    async def _send_heartbeat(self):
+        """
+        Every 30s send a lightweight heartbeat frame so
+        the client (and any NAT/PTP routers) know we're alive.
+        """
+        try:
+            while True:
+                await asyncio.sleep(30)
+                await self.send(text_data=json.dumps({
+                    "type": "ping",
+                    "timestamp": timezone.now().isoformat()
+                }))
+        except asyncio.CancelledError:
+            # normal on disconnect
+            pass
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data['message']
+        if data.get("type") == "ping":
+            return
+        user = self.scope['user'] if self.scope['user'].is_authenticated else None
+        username = user.username if user else 'Anonymous'
+        ts = timezone.now().isoformat()
 
-        # Send message to everyone in the room
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
+        # File upload payload (encrypted file)
+        if 'file' in data:
+            file_info = data['file']
+            iv_b64 = file_info.get('iv')
+            ct_b64 = file_info.get('ct')
+            if not iv_b64 or not ct_b64:
+                return
+            # Decode and store encrypted blob
+            iv = base64.b64decode(iv_b64)
+            ct = base64.b64decode(ct_b64)
+            raw = iv + ct
+            # Generate unique filename
+            orig_name = file_info.get('name', 'file')
+            ext = orig_name.split('.')[-1]
+            filename = f"{uuid.uuid4().hex}.{ext}.enc"
+            path = default_storage.save(filename, ContentFile(raw))
+            url = default_storage.url(path)
+            # Broadcast file metadata
+            event = {
                 'type': 'chat_message',
-                'message': f'{self.user_name}: {message}'
+                'user': username,
+                'file': {
+                    'url': url,
+                    'name': orig_name,
+                    'type': file_info.get('type', ''),
+                    'iv_length': len(iv),
+                },
+                'timestamp': ts,
             }
-        )
+            await self.channel_layer.group_send(self.room_group_name, event)
+            return
 
-        # Log the message to the file
-        log_message(self.room_name, self.user_name, message)
+        # Encrypted text payload
+        if 'iv' in data and 'ct' in data:
+            event = {
+                'type': 'chat_message',
+                'user': username,
+                'iv': data['iv'],
+                'ct': data['ct'],
+                'timestamp': ts,
+            }
+            await self.channel_layer.group_send(self.room_group_name, event)
+            return
+
+        # Plaintext message payload
+        content = data.get('message', '').strip()
+        if content:
+            msg = await self.create_message(self.room, user, content)
+            event = {
+                'type': 'chat_message',
+                'user': username,
+                'message': msg.content,
+                'timestamp': msg.timestamp.isoformat(),
+            }
+            await self.channel_layer.group_send(self.room_group_name, event)
 
     async def chat_message(self, event):
-        message = event['message']
+        # Build the payload to send back
+        payload = {
+            'user': event['user'],
+            'timestamp': event['timestamp'],
+        }
+        # Include text or file or encrypted fields
+        if 'message' in event:
+            payload['message'] = event['message']
+        if 'iv' in event and 'ct' in event:
+            payload['iv'] = event['iv']
+            payload['ct'] = event['ct']
+        if 'file' in event:
+            payload['file'] = event['file']
 
-        # Send message to WebSocket client
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
+        await self.send(text_data=json.dumps(payload))
+
+    @database_sync_to_async
+    def get_or_create_room(self, room_name):
+        return ChatRoom.objects.get_or_create(name=room_name)
+
+    @database_sync_to_async
+    def get_last_messages(self, room, limit):
+        qs = ChatMessage.objects.filter(room=room).select_related('user')
+        latest = qs.order_by('-timestamp')[:limit]
+        result = []
+        for msg in reversed(latest):
+            result.append({
+                'user': msg.user.username if msg.user else 'Anonymous',
+                'message': msg.content,
+                'timestamp': msg.timestamp.isoformat(),
+            })
+        return result
+
+    @database_sync_to_async
+    def create_message(self, room, user, content):
+        return ChatMessage.objects.create(
+            room=room,
+            user=user if user and user.is_authenticated else None,
+            content=content
+        )

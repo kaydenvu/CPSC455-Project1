@@ -29,7 +29,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-TRUSTED_DOMAINS = ["127.0.0.1", "localhost", ".vercel.app"]
+TRUSTED_DOMAINS = ["127.0.0.1", "localhost"]
 
 # Application definition
 
@@ -127,10 +127,12 @@ USE_TZ = True
 
 STATIC_ROOT = BASE_DIR / 'productionfiles'
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'mystaticfiles'
 ]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -141,7 +143,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379), config('REDIS_URL')],
+            "hosts": [config('REDIS_URL')],
         },
     },
 }

@@ -54,6 +54,10 @@ def Signup(request):
             # Create and save the user's profile
             profile = UserProfile(username=username)
             profile.save()
+            # Grab the generated public_key JWK from the hidden field
+            public_key_jwk = request.POST.get("public_key")
+            if public_key_jwk:
+                Keys.objects.create(user=profile, public_key=public_key_jwk)
             # Create and save the user type
             user_type_obj = user_type(user=user, type="regular")
             user_type_obj.save()

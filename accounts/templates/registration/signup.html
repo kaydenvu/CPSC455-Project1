@@ -3,47 +3,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up</title>
-    <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <meta charset="utf-8">
+  <title>Sign Up</title>
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
 </head>
 <body>
-    <div class="signup-container">
-        <h1>Sign Up</h1>
-        
-        <!-- Display random fact if passed from the view -->
-        {% if fact %}
-        <div class="fact">
-            <p><strong>Random Fact:</strong> {{ fact.fact }}</p>
-        </div>
-        {% endif %}
-        
-        <!-- Registration form -->
-        <form method="POST">
-            {% csrf_token %}
-            
-            <!-- Username field -->
-            <div class="form-field">
-                <label for="username">Username</label>
-                <input type="text" name="username" id="username" required>
-            </div>
-            
-            <!-- Password field -->
-            <div class="form-field">
-                <label for="password1">Password</label>
-                <input type="password" name="password1" id="password1" required>
-            </div>
-            
-            <!-- Confirm Password field -->
-            <div class="form-field">
-                <label for="password2">Confirm Password</label>
-                <input type="password" name="password2" id="password2" required>
-            </div>
-            
-            <!-- Submit button -->
-            <button type="submit">Sign Up</button>
-        </form>
-    </div>
+  <div class="signup-container">
+    <h1>Sign Up</h1>
+    {% if fact %}
+      <div class="fact"><strong>Random Fact:</strong> {{ fact.fact }}</div>
+    {% endif %}
+
+    <form id="signup-form" method="POST">
+      {% csrf_token %}
+
+      <div class="form-field">
+        <label for="username">Username</label>
+        <input type="text" name="username" id="username" required>
+      </div>
+      <div class="form-field">
+        <label for="password1">Password</label>
+        <input type="password" name="password1" id="password1" required>
+      </div>
+      <div class="form-field">
+        <label for="password2">Confirm Password</label>
+        <input type="password" name="password2" id="password2" required>
+      </div>
+
+      <!-- Hidden field for public key JWK -->
+      <input type="hidden" name="public_key" id="public_key">
+
+      <button type="submit">Sign Up</button>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!window.crypto || !window.crypto.subtle) {
+        console.error("Web Crypto API not available. Must be served over HTTPS or localhost.");
+        alert("Your browser does not support the required encryption API. Please use a modern browser over HTTPS.");
+        return;
+      }
+
+      try {
+        console.log("🔐 E2EE: Generating ECDH key pair…");
+        const keyPair = await crypto.subtle.generateKey(
+          { name: "ECDH", namedCurve: "P-256" },
+          true,
+          ["deriveKey"]
+        );
+
+        const publicJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+        console.log("🔑 E2EE: Public key JWK generated.");
+
+        const privJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+        localStorage.setItem("privateKeyJwk", JSON.stringify(privJwk));
+        console.log("🔒 E2EE: Private key stored in localStorage.");
+
+        document.getElementById("public_key").value = JSON.stringify(publicJwk);
+        console.log("📤 E2EE: Public key injected into form field.");
+
+      } catch (err) {
+        console.error("❌ E2EE key generation failed:", err);
+        alert("Could not generate encryption keys. Please refresh the page and try again.");
+      }
+    });
+  </script>
 </body>
 </html>

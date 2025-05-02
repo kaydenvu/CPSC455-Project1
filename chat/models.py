@@ -24,10 +24,25 @@ class Keys(models.Model):
         return f"{self.user}"
 
 class ChatRoom(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
 
 class ChatMessage(models.Model):
-    room = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE)
-    username = models.CharField(max_length=255)
-    message = models.TextField()
+    room      = models.ForeignKey(ChatRoom,
+                                  related_name='messages',
+                                  on_delete=models.CASCADE)
+    user      = models.ForeignKey(User,
+                                  null=True,
+                                  blank=True,
+                                  on_delete=models.SET_NULL)
+    content   = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']         # always return messages in chronological order
+
+    def __str__(self):
+        return f"[{self.timestamp:%Y-%m-%d %H:%M}] {self.user or 'Anonymous'}: {self.content[:20]}…"

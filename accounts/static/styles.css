@@ -113,50 +113,41 @@ body {
   width: 100%;
   text-align: left;      /* override center from .container */
 }
-/* ── Chat Page: Flex Layout ── */
 
-/* Main two‑column wrapper */
 .chat-main {
-  display: flex;       /* side‑by‑side */
-  gap: 20px;
-  height: calc(80vh - 80px); /* adjust for header height */
-}
-
-/* Left nav: fixed width */
-.chat-room-nav {
-  flex: 0 0 200px;     /* always 200px wide */
-}
-
-/* Right chat area: fill remaining space, column flex */
-.chat-area {
-  flex: 1;
+  /* this is the key flex box that sits inside .chat-container */
   display: flex;
-  flex-direction: column;
+  flex: 1;               /* take up all remaining height */
+  gap: 20px;             /* space between columns */
+  overflow: hidden;      /* prevent overflow if text area grows */
 }
 
-/* Make the log box big: fill available space up to a minimum height */
+.chat-room-nav {
+  /* left column: fixed width for the room list */
+  float: left;
+}
+
+.chat-room-nav ul.room-list li button {
+  display: block;
+  width: 100%;
+}
+
+.chat-area {
+  /* right column: chat log + input stacked vertically */
+  float: right;
+}
+
+/* make the textarea fill the vertical space above the input */
 #chat-log {
-  flex: 1;              /* grow to fill .chat-area */
-  width: 100%;          /* full width of its column */
-  min-height: 400px;    /* never shrink below 400px tall */
-  padding: 10px;
-  font-family: monospace;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  resize: none;
+  width: -webkit-fill-available;
+  width: fill-available;
+  width: 100%;
   box-sizing: border-box;
 }
 
-/* Tweak the input to be nice and big too */
+/* Make the message input wider and taller */
 #chat-message-input {
-  width: 100%;          /* span the full width */
-  height: 2.5em;        /* taller line */
-  padding: 0.5em;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-sizing: border-box;
+    width: -webkit-fill-available;
 }
 
 /* prettier back‑link button */

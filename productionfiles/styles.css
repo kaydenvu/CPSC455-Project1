@@ -1,4 +1,5 @@
-/* General Body Styles */
+/* — GLOBAL STYLES — */
+
 body {
     font-family: Arial, sans-serif;
     display: flex;
@@ -7,10 +8,9 @@ body {
     height: 100vh;
     background-color: #f4f4f4;
     margin: 0;
-}
-
-/* Main Container */
-.container {
+  }
+  
+  .container {
     background-color: white;
     padding: 20px;
     border-radius: 10px;
@@ -18,24 +18,21 @@ body {
     text-align: center;
     max-width: 400px;
     width: 100%;
-}
-
-/* Heading Style */
-h1 {
+  }
+  
+  h1 {
     margin-bottom: 20px;
     font-size: 24px;
     color: #333;
-}
-
-/* Paragraph Text */
-p {
+  }
+  
+  p {
     font-size: 16px;
     color: #555;
     margin-bottom: 30px;
-}
-
-/* Button Styles */
-button {
+  }
+  
+  button {
     width: 100%;
     padding: 12px;
     margin: 10px 0;
@@ -46,19 +43,135 @@ button {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-}
-
-/* Button Hover Effect */
-button:hover {
+  }
+  
+  button:hover {
     background-color: #0056b3;
-}
-
-/* Register Button */
-.register-btn {
+  }
+  
+  .register-btn {
     background-color: #28a745;
+  }
+  
+  .register-btn:hover {
+    background-color: #218838;
+  }
+  
+  
+  /* — CHAT INDEX & ROOM‑LIST BULLET REMOVAL — */
+  
+  ul.room-list {
+    list-style: none !important;   /* no bullets */
+    padding-left: 0 !important;    /* no indent */
+    margin: 0 0 20px;              /* bottom space */
+    text-align: left;
+  }
+  ul.room-list li {
+    margin: 8px 0;
+    list-style: none !important;   /* defensive */
+  }
+  ul.room-list li::marker {
+    content: none !important;      /* kill marker */
+  }
+  
+  
+  /* — CHAT ROOM PAGE STYLES — */
+  
+  /* Outer wrapper on chat pages (overrides 100vh centering) */
+  .chat-container {
+    max-width: 800px;       /* wider container */
+    width: 100%;
+    margin: 20px auto;
+    text-align: left;
+  }
+  
+  /* Header: room title + logout + back link */
+  .chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .chat-header .back-link {
+    margin-left: 10px;
+    font-size: 14px;
+    color: #007bff;
+    text-decoration: none;
+  }
+  .chat-header .back-link:hover {
+    text-decoration: underline;
+  }
+  
+ /* ── Side‑by‑side layout for chat page ── */
+.chat-container {
+  /* make the chat page a column flex container */
+  display: flex;
+  flex-direction: column;
+  height: 80vh;          /* or whatever vertical size you like */
+  margin: 20px auto;
+  max-width: 800px;
+  width: 100%;
+  text-align: left;      /* override center from .container */
+}
+/* ── Chat Page: Flex Layout ── */
+
+/* Main two‑column wrapper */
+.chat-main {
+  display: flex;       /* side‑by‑side */
+  gap: 20px;
+  height: calc(80vh - 80px); /* adjust for header height */
 }
 
-/* Register Button Hover Effect */
-.register-btn:hover {
-    background-color: #218838;
+/* Left nav: fixed width */
+.chat-room-nav {
+  flex: 0 0 200px;     /* always 200px wide */
+}
+
+/* Right chat area: fill remaining space, column flex */
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Make the log box big: fill available space up to a minimum height */
+#chat-log {
+  flex: 1;              /* grow to fill .chat-area */
+  width: 100%;          /* full width of its column */
+  min-height: 400px;    /* never shrink below 400px tall */
+  padding: 10px;
+  font-family: monospace;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  resize: none;
+  box-sizing: border-box;
+}
+
+/* Tweak the input to be nice and big too */
+#chat-message-input {
+  width: 100%;          /* span the full width */
+  height: 2.5em;        /* taller line */
+  padding: 0.5em;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+/* prettier back‑link button */
+.back-link {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 8px 14px;
+  background-color: #6c757d;      /* a medium grey */
+  color: #fff !important;         /* white text */
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.back-link:hover {
+  background-color: #5a6268;
 }
