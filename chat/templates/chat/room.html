@@ -48,6 +48,12 @@
           <input id="chat-message-input" type="text" placeholder="Type your message…">
           <input type="file" id="chat-file-input">
           <button id="chat-message-submit" class="send-btn">Send</button>
+          {% if request.user.is_staff %}
+            <a href="{% url 'clear_room_logs' room_name %}"
+              onclick="return confirm('Really clear all messages in this room?');">
+              🗑️ Clear chat history
+            </a>
+          {% endif %}
         </div>
       </section>
     </div>

@@ -70,8 +70,12 @@
       } else {
         text = data.message || '';
       }
-  
-      log.value += `[${new Date(timestamp).toLocaleTimeString()}] ${user}: ${text}\n`;
+      // Build a combined date+time label
+      const dt = new Date(data.timestamp);
+      const dateStr = dt.toLocaleDateString();     // e.g. "5/1/2025"
+      const timeStr = dt.toLocaleTimeString();     // e.g. "2:23:45 PM"
+      const label   = `${dateStr} ${timeStr}`;
+      log.value += `[${label}] ${user}: ${text}\n`;
       log.scrollTop = log.scrollHeight;
     };
   

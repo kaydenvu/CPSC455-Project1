@@ -12,7 +12,7 @@ from .models import ChatRoom, ChatMessage
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
+        self.room_name       = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f"chat_{self.room_name}"
 
         # Ensure the chat room exists
@@ -22,28 +22,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
-        # Start the heartbeat task
-        self.heartbeat_task = asyncio.create_task(self._send_heartbeat())
-
-        # Load and send last 50 messages (plaintext only)
+        # Send last 50 messages (they come back as dicts)
         last_messages = await self.get_last_messages(self.room, 50)
-        for msg in last_messages:
-            await self.send(text_data=json.dumps({
-                "user":      msg.user.username if msg.user else "Anonymous",
-                "message":   msg.content,
-                "timestamp": msg.timestamp.isoformat(),
-            }))
+        for msg_dict in last_messages:
+            await self.send(text_data=json.dumps(msg_dict))
 
         # Announce that a user has joined
-        user = self.scope['user'] if self.scope['user'].is_authenticated else None
-        username = user.username if user else 'Anonymous'
+        username = (self.scope['user'].username
+                    if self.scope['user'].is_authenticated else 'Anonymous')
         join_event = {
-            'type': 'chat_message',
-            'user': 'System',
-            'message': f"{username} has joined the chat.",
+            'type':      'chat_message',
+            'user':      'System',
+            'message':   f"{username} has joined the chat.",
             'timestamp': timezone.now().isoformat(),
         }
+        self.heartbeat_task = asyncio.create_task(self._send_heartbeat())
         await self.channel_layer.group_send(self.room_group_name, join_event)
+
 
     async def disconnect(self, close_code):
         self.heartbeat_task.cancel()
@@ -138,6 +133,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': msg.timestamp.isoformat(),
             }
             await self.channel_layer.group_send(self.room_group_name, event)
+            
+    async def _send_heartbeat(self):
+        try:
+            while True:
+                await asyncio.sleep(30)
+                await self.send(json.dumps({"type":"heartbeat"}))
+        except asyncio.CancelledError:
+            pass
 
     async def chat_message(self, event):
         # Build the payload to send back

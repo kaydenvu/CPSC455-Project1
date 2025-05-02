@@ -73,3 +73,15 @@ def room_keys(request):
         })
 
     return JsonResponse(data, safe=False)
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from .models import ChatRoom, ChatMessage
+
+@staff_member_required
+def clear_room_logs(request, room_name):
+    room = get_object_or_404(ChatRoom, name=room_name)
+    count, _ = ChatMessage.objects.filter(room=room).delete()
+    messages.success(request, f"Cleared {count} messages from '{room_name}'.")
+    return redirect("index")
