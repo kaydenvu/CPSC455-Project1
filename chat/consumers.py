@@ -10,10 +10,36 @@ from django.core.files.storage import default_storage
 
 from .models import ChatRoom, ChatMessage
 
+# Global presence cache - in production, use Redis instead
+# Format: {room_name: {username: {'status': 'online'|'typing', 'last_seen': timestamp}}}
+PRESENCE_CACHE = {}
+
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name       = self.scope['url_route']['kwargs']['room_name']
+        self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f"chat_{self.room_name}"
+        
+        # Get username - ensure we have a unique identifier for anonymous users
+        if self.scope['user'].is_authenticated:
+            self.username = self.scope['user'].username
+        else:
+            # Generate a consistent anonymous ID using session if available
+            session = self.scope.get('session', {})
+            if session and 'anonymous_id' in session:
+                anonymous_id = session['anonymous_id']
+            else:
+                anonymous_id = uuid.uuid4().hex[:8]
+                if session:
+                    session['anonymous_id'] = anonymous_id
+            
+            self.username = f"Anonymous-{anonymous_id}"
+            
+        self.typing = False
+        self.typing_task = None
+
+        # Initialize room in the presence cache if needed
+        if self.room_name not in PRESENCE_CACHE:
+            PRESENCE_CACHE[self.room_name] = {}
 
         # Ensure the chat room exists
         self.room, _ = await self.get_or_create_room(self.room_name)
@@ -26,35 +52,69 @@ class ChatConsumer(AsyncWebsocketConsumer):
         last_messages = await self.get_last_messages(self.room, 50)
         for msg_dict in last_messages:
             await self.send(text_data=json.dumps(msg_dict))
+            
+        # Send current online users
+        await self.send_presence_list()
+            
+        # Update user presence status to online
+        PRESENCE_CACHE[self.room_name][self.username] = {
+            'status': 'online',
+            'last_seen': timezone.now().isoformat()
+        }
 
-        # Announce that a user has joined
-        username = (self.scope['user'].username
-                    if self.scope['user'].is_authenticated else 'Anonymous')
+        # Announce that a user has joined and their presence
         join_event = {
-            'type':      'chat_message',
-            'user':      'System',
-            'message':   f"{username} has joined the chat.",
+            'type': 'chat_message',
+            'user': 'System',
+            'message': f"{self.username} has joined the chat.",
             'timestamp': timezone.now().isoformat(),
         }
+        presence_event = {
+            'type': 'presence_update',
+            'user': self.username,
+            'status': 'online',
+            'timestamp': timezone.now().isoformat(),
+        }
+        
+        # Start heartbeat task
         self.heartbeat_task = asyncio.create_task(self._send_heartbeat())
+        
+        # Send join notification and presence update
         await self.channel_layer.group_send(self.room_group_name, join_event)
-
+        await self.channel_layer.group_send(self.room_group_name, presence_event)
 
     async def disconnect(self, close_code):
+        # Cancel heartbeat and any pending typing timeout
         self.heartbeat_task.cancel()
+        if self.typing_task and not self.typing_task.done():
+            self.typing_task.cancel()
+            
+        # Update presence status to offline
+        if self.room_name in PRESENCE_CACHE and self.username in PRESENCE_CACHE[self.room_name]:
+            del PRESENCE_CACHE[self.room_name][self.username]
+        
         # Leave the group
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
         # Announce leave
-        user = self.scope['user'] if self.scope['user'].is_authenticated else None
-        username = user.username if user else 'Anonymous'
         leave_event = {
             'type': 'chat_message',
             'user': 'System',
-            'message': f"{username} has left the chat.",
+            'message': f"{self.username} has left the chat.",
             'timestamp': timezone.now().isoformat(),
         }
+        
+        # Send presence update for offline status
+        presence_event = {
+            'type': 'presence_update',
+            'user': self.username,
+            'status': 'offline',
+            'timestamp': timezone.now().isoformat(),
+        }
+        
         await self.channel_layer.group_send(self.room_group_name, leave_event)
+        await self.channel_layer.group_send(self.room_group_name, presence_event)
+
     async def _send_heartbeat(self):
         """
         Every 30s send a lightweight heartbeat frame so
@@ -63,6 +123,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             while True:
                 await asyncio.sleep(30)
+                # Update last seen timestamp
+                if self.room_name in PRESENCE_CACHE and self.username in PRESENCE_CACHE[self.room_name]:
+                    PRESENCE_CACHE[self.room_name][self.username]['last_seen'] = timezone.now().isoformat()
+                
                 await self.send(text_data=json.dumps({
                     "type": "ping",
                     "timestamp": timezone.now().isoformat()
@@ -70,13 +134,91 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except asyncio.CancelledError:
             # normal on disconnect
             pass
+            
+    async def _typing_timeout(self):
+        """
+        After 3 seconds of no typing activity, clear the typing status
+        """
+        try:
+            await asyncio.sleep(3)
+            self.typing = False
+            
+            # Update presence status back to online
+            if self.room_name in PRESENCE_CACHE and self.username in PRESENCE_CACHE[self.room_name]:
+                PRESENCE_CACHE[self.room_name][self.username]['status'] = 'online'
+                
+            # Broadcast typing stopped
+            presence_event = {
+                'type': 'presence_update',
+                'user': self.username,
+                'status': 'online',
+                'timestamp': timezone.now().isoformat(),
+            }
+            await self.channel_layer.group_send(self.room_group_name, presence_event)
+        except asyncio.CancelledError:
+            # Normal cancellation when user types again
+            pass
+
+    async def send_presence_list(self):
+        """Send the current list of online users to this client"""
+        if self.room_name in PRESENCE_CACHE:
+            presence_list = {
+                'type': 'presence_list',
+                'users': PRESENCE_CACHE[self.room_name],
+                'timestamp': timezone.now().isoformat(),
+            }
+            await self.send(text_data=json.dumps(presence_list))
+
     async def receive(self, text_data):
         data = json.loads(text_data)
+        
+        # Handle ping/pong
         if data.get("type") == "ping":
+            await self.send(text_data=json.dumps({
+                "type": "pong",
+                "timestamp": timezone.now().isoformat()
+            }))
             return
-        user = self.scope['user'] if self.scope['user'].is_authenticated else None
-        username = user.username if user else 'Anonymous'
-        ts = timezone.now().isoformat()
+            
+        # Handle typing indicator
+        if data.get("type") == "typing_indicator":
+            typing_status = data.get("typing", False)
+            
+            # Only send update if status changed
+            if typing_status != self.typing:
+                self.typing = typing_status
+                
+                # Update presence status
+                if self.room_name in PRESENCE_CACHE and self.username in PRESENCE_CACHE[self.room_name]:
+                    PRESENCE_CACHE[self.room_name][self.username]['status'] = 'typing' if typing_status else 'online'
+                
+                # Send typing indicator to group
+                presence_event = {
+                    'type': 'presence_update',
+                    'user': self.username,
+                    'status': 'typing' if typing_status else 'online',
+                    'timestamp': timezone.now().isoformat(),
+                }
+                await self.channel_layer.group_send(self.room_group_name, presence_event)
+                
+                # Set/cancel typing timeout
+                if typing_status:
+                    # Cancel existing typing task if any
+                    if self.typing_task and not self.typing_task.done():
+                        self.typing_task.cancel()
+                    # Create new typing timeout task
+                    self.typing_task = asyncio.create_task(self._typing_timeout())
+            return
+            
+        # Handle presence request
+        if data.get("type") == "get_presence":
+            await self.send_presence_list()
+            return
+
+        # Update last seen timestamp
+        if self.room_name in PRESENCE_CACHE and self.username in PRESENCE_CACHE[self.room_name]:
+            PRESENCE_CACHE[self.room_name][self.username]['last_seen'] = timezone.now().isoformat()
+            PRESENCE_CACHE[self.room_name][self.username]['status'] = 'online'
 
         # File upload payload (encrypted file)
         if 'file' in data:
@@ -98,14 +240,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Broadcast file metadata
             event = {
                 'type': 'chat_message',
-                'user': username,
+                'user': self.username,
                 'file': {
                     'url': url,
                     'name': orig_name,
                     'type': file_info.get('type', ''),
                     'iv_length': len(iv),
                 },
-                'timestamp': ts,
+                'timestamp': timezone.now().isoformat(),
             }
             await self.channel_layer.group_send(self.room_group_name, event)
             return
@@ -114,10 +256,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if 'iv' in data and 'ct' in data:
             event = {
                 'type': 'chat_message',
-                'user': username,
+                'user': self.username,
                 'iv': data['iv'],
                 'ct': data['ct'],
-                'timestamp': ts,
+                'timestamp': timezone.now().isoformat(),
             }
             await self.channel_layer.group_send(self.room_group_name, event)
             return
@@ -125,22 +267,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Plaintext message payload
         content = data.get('message', '').strip()
         if content:
-            msg = await self.create_message(self.room, user, content)
+            # Reset typing indicator if sending a message
+            if self.typing:
+                self.typing = False
+                if self.typing_task and not self.typing_task.done():
+                    self.typing_task.cancel()
+                    
+                # Update presence back to online
+                if self.room_name in PRESENCE_CACHE and self.username in PRESENCE_CACHE[self.room_name]:
+                    PRESENCE_CACHE[self.room_name][self.username]['status'] = 'online'
+
+            msg = await self.create_message(self.room, self.scope['user'] if self.scope['user'].is_authenticated else None, content)
             event = {
                 'type': 'chat_message',
-                'user': username,
+                'user': self.username,
                 'message': msg.content,
                 'timestamp': msg.timestamp.isoformat(),
             }
             await self.channel_layer.group_send(self.room_group_name, event)
-            
-    async def _send_heartbeat(self):
-        try:
-            while True:
-                await asyncio.sleep(30)
-                await self.send(json.dumps({"type":"heartbeat"}))
-        except asyncio.CancelledError:
-            pass
 
     async def chat_message(self, event):
         # Build the payload to send back
@@ -157,6 +301,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if 'file' in event:
             payload['file'] = event['file']
 
+        await self.send(text_data=json.dumps(payload))
+        
+    async def presence_update(self, event):
+        """
+        Handle presence updates (online/offline/typing)
+        """
+        payload = {
+            'type': 'presence_update',
+            'user': event['user'],
+            'status': event['status'],
+            'timestamp': event['timestamp'],
+        }
         await self.send(text_data=json.dumps(payload))
 
     @database_sync_to_async
