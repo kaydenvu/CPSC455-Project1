@@ -1,177 +1,281 @@
 /* — GLOBAL STYLES — */
 
 body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background-color: #f4f4f4;
-    margin: 0;
-  }
-  
-  .container {
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    max-width: 400px;
-    width: 100%;
-  }
-  
-  h1 {
-    margin-bottom: 20px;
-    font-size: 24px;
-    color: #333;
-  }
-  
-  p {
-    font-size: 16px;
-    color: #555;
-    margin-bottom: 30px;
-  }
-  
-  button {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    font-size: 16px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  button:hover {
-    background-color: #0056b3;
-  }
-  
-  .register-btn {
-    background-color: #28a745;
-  }
-  
-  .register-btn:hover {
-    background-color: #218838;
-  }
-  
-  
-  /* — CHAT INDEX & ROOM‑LIST BULLET REMOVAL — */
-  
-  ul.room-list {
-    list-style: none !important;   /* no bullets */
-    padding-left: 0 !important;    /* no indent */
-    margin: 0 0 20px;              /* bottom space */
-    text-align: left;
-  }
-  ul.room-list li {
-    margin: 8px 0;
-    list-style: none !important;   /* defensive */
-  }
-  ul.room-list li::marker {
-    content: none !important;      /* kill marker */
-  }
-  
-  
-  /* — CHAT ROOM PAGE STYLES — */
-  
-  /* Outer wrapper on chat pages (overrides 100vh centering) */
-  .chat-container {
-    max-width: 800px;       /* wider container */
-    width: 100%;
-    margin: 20px auto;
-    text-align: left;
-  }
-  
-  /* Header: room title + logout + back link */
-  .chat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  .chat-header .back-link {
-    margin-left: 10px;
-    font-size: 14px;
-    color: #007bff;
-    text-decoration: none;
-  }
-  .chat-header .back-link:hover {
-    text-decoration: underline;
-  }
-  
- /* ── Side‑by‑side layout for chat page ── */
-.chat-container {
-  /* make the chat page a column flex container */
+  font-family: Arial, sans-serif;
   display: flex;
-  flex-direction: column;
-  height: 80vh;          /* or whatever vertical size you like */
-  margin: 20px auto;
-  max-width: 800px;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f4f4f4;
+  margin: 0;
+}
+
+.container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 400px;
   width: 100%;
-  text-align: left;      /* override center from .container */
+}
+
+h1 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+p {
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 30px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  font-size: 16px;
+  background-color: #2e56ad;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.register-btn {
+  background-color: #28a745;
+}
+
+.register-btn:hover {
+  background-color: #218838;
+}
+
+
+/* — CHAT INDEX & ROOM‑LIST BULLET REMOVAL — */
+
+ul.room-list {
+  list-style: none !important;   /* no bullets */
+  padding-left: 0 !important;    /* no indent */
+  margin: 0 0 20px;              /* bottom space */
+  text-align: left;
+}
+ul.room-list li {
+  margin: 8px 0;
+  list-style: none !important;   /* defensive */
+}
+ul.room-list li::marker {
+  content: none !important;      /* kill marker */
+}
+
+
+/* — CHAT ROOM PAGE STYLES — */
+
+/* Outer wrapper on chat pages (overrides 100vh centering) */
+.chat-container {
+  max-width: 800px;       /* wider container */
+  width: 100%;
+  margin: 20px auto;
+  text-align: left;
+}
+
+/* Header: room title + logout + back link */
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.chat-header .back-link {
+  margin-left: 10px;
+  font-size: 14px;
+  color: #007bff;
+  text-decoration: none;
+}
+.chat-header .back-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Side‑by‑side layout for chat page ── */
+.chat-container {
+/* make the chat page a column flex container */
+display: flex;
+flex-direction: column;
+height: 80vh;          /* or whatever vertical size you like */
+margin: 20px auto;
+max-width: 800px;
+width: 100%;
+text-align: left;      /* override center from .container */
 }
 /* ── Chat Page: Flex Layout ── */
 
 /* Main two‑column wrapper */
 .chat-main {
-  display: flex;       /* side‑by‑side */
-  gap: 20px;
-  height: calc(80vh - 80px); /* adjust for header height */
+display: flex;       /* side‑by‑side */
+gap: 20px;
+height: calc(80vh - 80px); /* adjust for header height */
 }
 
 /* Left nav: fixed width */
 .chat-room-nav {
-  flex: 0 0 200px;     /* always 200px wide */
+flex: 0 0 200px;     /* always 200px wide */
 }
 
 /* Right chat area: fill remaining space, column flex */
 .chat-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+flex: 1;
+display: flex;
+flex-direction: column;
 }
 
 /* Make the log box big: fill available space up to a minimum height */
 #chat-log {
-  flex: 1;              /* grow to fill .chat-area */
-  width: 100%;          /* full width of its column */
-  min-height: 400px;    /* never shrink below 400px tall */
-  padding: 10px;
-  font-family: monospace;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  resize: none;
-  box-sizing: border-box;
+flex: 1;              /* grow to fill .chat-area */
+width: 100%;          /* full width of its column */
+min-height: 400px;    /* never shrink below 400px tall */
+padding: 10px;
+font-family: monospace;
+font-size: 14px;
+border: 1px solid #ccc;
+border-radius: 5px;
+resize: none;
+box-sizing: border-box;
 }
 
 /* Tweak the input to be nice and big too */
 #chat-message-input {
-  width: 100%;          /* span the full width */
-  height: 2.5em;        /* taller line */
-  padding: 0.5em;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-sizing: border-box;
+width: 100%;          /* span the full width */
+height: 2.5em;        /* taller line */
+padding: 0.5em;
+font-size: 1rem;
+border: 1px solid #ccc;
+border-radius: 5px;
+box-sizing: border-box;
 }
 
 /* prettier back‑link button */
 .back-link {
-  display: inline-block;
-  margin-left: 12px;
-  padding: 8px 14px;
-  background-color: #6c757d;      /* a medium grey */
-  color: #fff !important;         /* white text */
-  border-radius: 5px;
-  text-decoration: none;
-  font-size: 14px;
-  transition: background-color 0.2s ease;
+display: inline-block;
+margin-left: 12px;
+padding: 8px 14px;
+background-color: #6c757d;      /* a medium grey */
+color: #fff !important;         /* white text */
+border-radius: 5px;
+text-decoration: none;
+font-size: 14px;
+transition: background-color 0.2s ease;
 }
 
 .back-link:hover {
-  background-color: #5a6268;
+background-color: #5a6268;
+}
+
+
+.presence-panel {
+border: 1px solid #dee2e6;
+border-radius: 5px;
+padding: 10px;
+margin-top: 10px;
+background-color: #f8f9fa;
+flex-grow: 1;
+display: flex;
+flex-direction: column;
+max-height: 200px;
+}
+
+.presence-panel h3 {
+margin-top: 0;
+margin-bottom: 10px;
+font-size: 16px;
+text-align: center;
+color: #495057;
+}
+
+/* Connection status indicator */
+.connection-status-container {
+display: flex;
+align-items: center;
+justify-content: space-between;
+font-size: 13px;
+padding: 5px 8px;
+background-color: #f1f1f1;
+border-radius: 4px;
+margin-bottom: 10px;
+}
+
+.status-online {
+color: #28a745;
+font-weight: bold;
+}
+
+.status-offline {
+color: #dc3545;
+font-weight: bold;
+}
+
+/* Online users list */
+.online-users-list {
+overflow-y: auto;
+flex-grow: 1;
+padding: 5px;
+font-size: 14px;
+}
+
+/* Individual user entry */
+.user-presence {
+padding: 8px 5px;
+display: flex;
+align-items: center;
+border-bottom: 1px solid #eee;
+}
+
+.user-presence:last-child {
+border-bottom: none;
+}
+
+/* Status indicator dot */
+.status-indicator {
+display: inline-block;
+width: 10px;
+height: 10px;
+border-radius: 50%;
+margin-right: 8px;
+}
+
+.status-indicator.online {
+background-color: #28a745; /* Green */
+}
+
+.status-indicator.offline {
+background-color: #dc3545; /* Red */
+}
+
+.status-indicator.typing {
+background-color: #007bff; /* Blue */
+animation: pulse 1.5s infinite;
+}
+
+/* Typing indicator below chat log */
+.typing-indicator {
+font-style: italic;
+color: #6c757d;
+padding: 8px;
+min-height: 24px;
+margin-bottom: 8px;
+background-color: #f8f9fa;
+border-radius: 5px;
+display: none;
+}
+
+/* Animation for typing indicators */
+@keyframes pulse {
+0% { opacity: 1; }
+50% { opacity: 0.5; }
+100% { opacity: 1; }
 }

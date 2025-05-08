@@ -39,14 +39,34 @@
             <li>No active rooms.</li>
           {% endfor %}
         </ul>
+        
+        <!-- New: Online Users Panel -->
+        <div class="presence-panel">
+          <h3>Who's Online</h3>
+          <div class="connection-status-container">
+            <span>Your connection: </span>
+            <span id="connection-status" class="status-offline">Offline</span>
+          </div>
+          <div id="online-users" class="online-users-list">
+            <!-- User presence indicators will be added here dynamically -->
+          </div>
+        </div>
       </nav>
 
       <!-- Right: Chat Area -->
       <section class="chat-area">
-        <textarea id="chat-log" class="chat-log" readonly></textarea>
+        <!-- Updated: Pre-populate with chat history -->
+        <textarea id="chat-log" class="chat-log" readonly>{% if chat_history %}{{ chat_history }}{% endif %}</textarea>
+        
+        <!-- New: Typing Indicator -->
+        <div id="typing-indicator" class="typing-indicator"></div>
+        
         <div class="chat-input-group">
           <input id="chat-message-input" type="text" placeholder="Type your message…">
-          <input type="file" id="chat-file-input">
+          <div class="file-upload-container">
+            <label for="chat-file-input" class="file-upload-label">📎</label>
+            <input type="file" id="chat-file-input" class="file-upload">
+          </div>
           <button id="chat-message-submit" class="send-btn">Send</button>
           {% if request.user.is_staff %}
             <a href="{% url 'clear_room_logs' room_name %}"
@@ -61,6 +81,9 @@
 
   <!-- embed the room-name JSON into the page for app.js -->
   {{ room_name|json_script:"room-name" }}
+  <!-- New: embed username for presence detection -->
+  {{ request.user.username|default:"Anonymous"|json_script:"username" }}
+  
   <script>
     // construct the keys‑fetch URL prefix
     window.KEYS_URL = "{% url 'room-keys' %}?room=";
