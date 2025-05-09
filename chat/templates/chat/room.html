@@ -56,16 +56,20 @@
       <!-- Right: Chat Area -->
       <section class="chat-area">
         <!-- Updated: Pre-populate with chat history -->
-        <textarea id="chat-log" class="chat-log" readonly>{% if chat_history %}{{ chat_history }}{% endif %}</textarea>
+        <div id="chat-log" class="chat-log" readonly>{% if chat_history %}{{ chat_history }}{% endif %}</div>
         
         <!-- New: Typing Indicator -->
         <div id="typing-indicator" class="typing-indicator"></div>
         
         <div class="chat-input-group">
           <input id="chat-message-input" type="text" placeholder="Type your message…">
+
+          
           <div class="file-upload-container">
             <label for="chat-file-input" class="file-upload-label">📎</label>
+
             <input type="file" id="chat-file-input" class="file-upload">
+          
           </div>
           <button id="chat-message-submit" class="send-btn">Send</button>
           {% if request.user.is_staff %}
