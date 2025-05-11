@@ -15,7 +15,7 @@ git clone https://github.com/kaydenvu/CPSC455-Project1
 1. Open an integrated terminal in the mynewsite directory.
 2. Create a virtual environment using the following command in PowerShell:
 ```
-python -m venv mynewsite
+python -m venv venv
 ```
 3. Activate the virtual environment:
 - On Windows (PowerShell):
@@ -26,9 +26,9 @@ python -m venv mynewsite
     ```
     source mynewsite/bin/activate
     ```
-4. Install the required dependencies:
+4. Install the required dependencies by running this file in the terminal:
 ```
-pip install -r requirements.txt
+bash build.sh
 ```
 
 ## Running the Application
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 ### 1. Start the Server
 To start the Django development server and enable WebSocket communication, run:
 ```
-python manage.py runserver
+python3 manage.py runserver
 ```
 Then, open your browser and go to ``` http://127.0.0.1:8000 ``` to access the application.
 

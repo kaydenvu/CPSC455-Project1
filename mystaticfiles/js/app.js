@@ -261,6 +261,30 @@ try {
       }));
       return;
     }
+
+    // Handles rating limiting in the chat box
+    if (data.type === 'rate_limit_warning') {
+      // Create a rate limit UI
+      const warningDiv = document.createElement('div');
+      warningDiv.className ='rate-limit-warning';
+      warningDiv.textContent = data.message;
+
+      // The warning message appears in the log when rate-limit surpassed
+      log.appendChild(warningDiv);
+      log.scrollTop = log.scrollHeight;
+
+      input.classList.add('rate-limited');
+      send.classList.add('rate-limited');
+      send.disable = true;
+
+      // Send button enabled again after timeOut is over
+      setTimeout(() => {
+        input.classList.remove('rate-limited');
+        send.classList.remove('rate-limited');
+        send.disabled = false;
+      }, 2000);
+      return;
+    }
     
     // Handle presence updates
     if (data.type === 'presence_update') {

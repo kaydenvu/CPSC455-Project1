@@ -7,6 +7,8 @@ from channels.db import database_sync_to_async
 from django.utils import timezone
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from datetime import timedelta
+from collections import defaultdict
 
 from .models import ChatRoom, ChatMessage
 
@@ -14,7 +16,17 @@ from .models import ChatRoom, ChatMessage
 # Format: {room_name: {username: {'status': 'online'|'typing', 'last_seen': timestamp}}}
 PRESENCE_CACHE = {}
 
+# Global rate limiting cache - in production, use Redis instead
+# Format: {username: [list of message timestamps]}
+MESSAGE_RATE_CACHE = defaultdict(list)
+
 class ChatConsumer(AsyncWebsocketConsumer):
+    # Rate limiting constants
+    RATE_LIMIT_MESSAGES = 5  # Maximum messages
+    RATE_LIMIT_WINDOW = 5    # Time window in seconds
+    RATE_LIMIT_FILE_WINDOW = 30  # Longer window for file uploads (seconds)
+    RATE_LIMIT_FILES = 2     # Fewer allowed file uploads
+
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f"chat_{self.room_name}"
@@ -40,6 +52,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Initialize room in the presence cache if needed
         if self.room_name not in PRESENCE_CACHE:
             PRESENCE_CACHE[self.room_name] = {}
+
+        # Initialize rate limiting for this user
+        if self.username not in MESSAGE_RATE_CACHE:
+            MESSAGE_RATE_CACHE[self.username] = []
 
         # Ensure the chat room exists
         self.room, _ = await self.get_or_create_room(self.room_name)
@@ -159,6 +175,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Normal cancellation when user types again
             pass
 
+    def _clean_expired_messages(self, username, window_seconds):
+        """Remove messages older than the window from the rate cache"""
+        now = timezone.now()
+        MESSAGE_RATE_CACHE[username] = [
+            timestamp for timestamp in MESSAGE_RATE_CACHE[username]
+            if now - timestamp < timedelta(seconds=window_seconds)
+        ]
+        
+    async def _check_rate_limit(self, is_file=False):
+        """Check if the user has exceeded their rate limit"""
+        window = self.RATE_LIMIT_FILE_WINDOW if is_file else self.RATE_LIMIT_WINDOW
+        limit = self.RATE_LIMIT_FILES if is_file else self.RATE_LIMIT_MESSAGES
+        
+        # Clean expired messages first
+        self._clean_expired_messages(self.username, window)
+        
+        # Check if user is within limits
+        if len(MESSAGE_RATE_CACHE[self.username]) >= limit:
+            return False
+            
+        # Add current message timestamp
+        MESSAGE_RATE_CACHE[self.username].append(timezone.now())
+        return True
+        
+    async def _send_rate_limit_warning(self):
+        """Send a private rate limit warning to the user"""
+        await self.send(text_data=json.dumps({
+            'type': 'rate_limit_warning',
+            'message': f"Please slow down. You can send {self.RATE_LIMIT_MESSAGES} messages every {self.RATE_LIMIT_WINDOW} seconds.",
+            'timestamp': timezone.now().isoformat(),
+        }))
+
     async def send_presence_list(self):
         """Send the current list of online users to this client"""
         if self.room_name in PRESENCE_CACHE:
@@ -170,12 +218,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps(presence_list))
 
     async def receive(self, text_data):
-        try:
-            data = json.loads(text_data)
-        except json.JSONDecodeError:
-            # bad payload—log and ignore instead of crash
-            print("Bad payload: %r", text_data)
-            return
+        data = json.loads(text_data)
         
         # Handle ping/pong
         if data.get("type") == "ping":
@@ -227,6 +270,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # File upload payload (encrypted file)
         if 'file' in data:
+            # Check rate limit for files
+            if not await self._check_rate_limit(is_file=True):
+                await self._send_rate_limit_warning()
+                return
+                
             file_info = data['file']
             iv_b64 = file_info.get('iv')
             ct_b64 = file_info.get('ct')
@@ -259,6 +307,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Encrypted text payload
         if 'iv' in data and 'ct' in data:
+            # Check rate limit
+            if not await self._check_rate_limit():
+                await self._send_rate_limit_warning()
+                return
+                
             event = {
                 'type': 'chat_message',
                 'user': self.username,
@@ -272,6 +325,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Plaintext message payload
         content = data.get('message', '').strip()
         if content:
+            # Check rate limit
+            if not await self._check_rate_limit():
+                await self._send_rate_limit_warning()
+                return
+                
             # Reset typing indicator if sending a message
             if self.typing:
                 self.typing = False
