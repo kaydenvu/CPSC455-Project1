@@ -152,13 +152,16 @@ ul.room-list li::marker {
 
 /* Tweak the input to be nice and big too */
 #chat-message-input {
+  flex-grow: 1;
+  margin-right:5px;
+  padding: 8px 12px;
   width: 100%;          /* span the full width */
   height: 2.5em;        /* taller line */
   padding: 0.5em;
   font-size: 1rem;
   border: 1px solid #ccc;
   border-radius: 5px;
-  box-sizing: border-box;
+  /* box-sizing: border-box; */
 }
 
 /* prettier back‑link button */
@@ -177,7 +180,6 @@ ul.room-list li::marker {
 .back-link:hover {
   background-color: #5a6268;
 }
-
 
 .presence-panel {
   border: 1px solid #dee2e6;
@@ -263,17 +265,6 @@ ul.room-list li::marker {
   animation: pulse 1.5s infinite;
 }
 
-/* Typing indicator below chat log */
-.typing-indicator {
-  font-style: italic;
-  color: #6c757d;
-  padding: 8px;
-  min-height: 24px;
-  margin-bottom: 8px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
-  display: none;
-}
 
 /* Animation for typing indicators */
 @keyframes pulse {
@@ -303,7 +294,6 @@ ul.room-list li::marker {
   word-break: break-word;
 }
 
-/* Message metadata (timestamp and username) */
 /* Message metadata (timestamp and username) */
 .message-meta {
   margin-bottom: 4px;
@@ -386,11 +376,6 @@ ul.room-list li::marker {
   background-color: #1d3c7a;
 }
 
-.file-download-btn:disabled .send-btn.rate-limited{
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
 /* File error messages */
 .file-error {
   color: #dc3545;
@@ -405,14 +390,16 @@ ul.room-list li::marker {
 /* File upload styling */
 .chat-input-group {
   display: flex;
+  padding: 10px;
+  border-top: 1px solid #eee;
+  background-color: #f9f9f9;
+  position: relative;
   gap: 10px;
   margin-top: 15px;
   align-items: center;
 }
 
-.file-upload-container {
-  position: relative;
-}
+
 
 .file-upload-label {
   display: inline-flex;
@@ -470,7 +457,6 @@ ul.room-list li::marker {
   border-radius: 5px;
 }
 
-
 /* Rate limit warning message */
 .rate-limit-warning {
   background-color: #fff3cd;
@@ -516,5 +502,44 @@ ul.room-list li::marker {
   }
   100% {
     box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+/* Emoji button styling */
+.emoji-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 6px 8px; 
+  transition: transform 0.2s;
+  outline: none;
+  margin: 0;
+  line-height: 1;
+  height: 36px;
+  width: auto;
+}
+
+/* Fix positioning for emoji picker */
+.emoji-picker {
+  z-index: 1000 !important; /* Ensure it appears above other elements */
+}
+
+/* Hover effect for emoji categories */
+.emoji-picker__tab:hover {
+  background-color: #f1f3f5;
+}
+
+/* Mobile optimizations for the emoji picker */
+@media (max-width: 768px) {
+  .emoji-picker {
+    position: fixed !important;
+    bottom: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto !important;
+    max-width: 90% !important;
+    max-height: 300px !important;
+    transform: none !important;
   }
 }

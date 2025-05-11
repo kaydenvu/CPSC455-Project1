@@ -35,17 +35,70 @@ const csrfToken = getCookie('csrftoken');
   const onlineUsersList = document.getElementById('online-users');
   const connectionStatus = document.getElementById('connection-status');
   const fileInput = document.getElementById('chat-file-input');
-  
+  const emojiButton = document.getElementById('emoji-button');
+
   if (!log || !input || !send) {
     console.error("Chat HTML elements not found!");
     return;
   }
+  
+// Initialize the emoji picker 
+if (emojiButton) {
+  const picker = new EmojiButton({
+    position: 'top-start',
+    rootElement: document.getElementById('chat-container'),
+    autoHide: false,
+    autoFocusSearch: false,
+    showAnimation: true,
+    
+  });
+  
+  // Attach the picker to the button
+  emojiButton.addEventListener('click', () => {
+    picker.togglePicker(emojiButton);Z
+  });
+  
+  // Handle emoji selection
+  picker.on('emoji', selection => {
+    // Get current cursor position
+    const cursorPos = input.selectionStart;
+
+    const emoji = selection.emoji || selection.character || selection;
+
+    if (!emoji) {
+      console.error('Could not extract emoji from selection:', selection);
+      return;
+    }
+    // Insert emoji at cursor position
+    const currentValue = input.value;
+    input.value = currentValue.slice(0, cursorPos) + emoji + currentValue.slice(cursorPos);
+    
+    // Move cursor position after the inserted emoji
+    const newCursorPos = cursorPos + emoji.length;
+    input.setSelectionRange(newCursorPos, newCursorPos);
+    
+    // Focus back on the input
+    input.focus();
+    
+    // Trigger typing indicator
+    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Process' }));
+  });
+  
+  // Close emoji picker when clicking outside
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.emoji-picker') && 
+        event.target !== emojiButton && 
+        picker.pickerVisible) {
+      picker.hidePicker();
+    }
+  });
+}
 
   // 2) Try E2EE (but don't let failure stop you)
   let sharedKey = null, useE2EE = false, privateKey = null;
 
 try {
-  // 1) Ensure we have a keypair in localStorage
+  // Ensure we have a keypair in localStorage
   let stored = localStorage.getItem("ecdhKeypair");
   let pubJwk, privJwkObj;
 
