@@ -1,5 +1,5 @@
 # chat/views.py
-import json
+import json, io, requests, time, vt
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.http import JsonResponse 
@@ -9,6 +9,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from decouple import config
+
+VT_API_KEY = config('VIRUSTOTAL_API_KEY')
 
 DEFAULT_ROOMS = ['room1', 'room2', 'room3']
 ROOMS = list(DEFAULT_ROOMS)
@@ -20,6 +23,16 @@ LAST_ACTIVE = {
 }
 
 INACTIVITY_THRESHOLD = timedelta(minutes=1)
+def is_blob_clean(blob: bytes, timeout: int = 60) -> bool:
+    client = vt.Client(VT_API_KEY)
+    try:
+        analysis = client.scan_file(io.BytesIO(blob),
+                                    wait_for_completion=True,
+                                    timeout=timeout)
+        return analysis.stats['malicious'] == 0
+    finally:
+        client.close()
+
 
 def prune_rooms():
     now = timezone.now()
@@ -112,19 +125,28 @@ def upload_to_b2(request):
     if not f:
         return JsonResponse({"error": "No file provided"}, status=400)
 
-    data      = f.read()
-    # generate a unique key so you never overwrite
-    b2_key    = f"{uuid.uuid4().hex}_{f.name}"
-    result    = upload_bytes(data, b2_key)
+    data = f.read()
 
+    try:
+        clean = is_blob_clean(data)
+    except Exception:
+        clean = True  # or True if you’d rather allow on API failure
+
+    if not clean:
+        return JsonResponse(
+            {"error": "Malicious content detected—upload blocked."},
+            status=400
+        )
+    
+    b2_key      = f"{uuid.uuid4().hex}_{f.name}"
+    result = upload_bytes(data, b2_key)
     download_url = make_presigned_b2_url(b2_key, valid_seconds=3600)
-
-    # result.file_name, result.file_id, result.content_sha1, etc are available
+    
     return JsonResponse({
-        "b2_key":      b2_key,
-        "file_id":     result.id_,
-        "file_name":   result.file_name,
-        "content_sha1":result.content_sha1,
+        "b2_key":       b2_key,
+        "file_id":      result.id_,
+        "file_name":    result.file_name,
+        "content_sha1": result.content_sha1,
         "download_url": download_url,
     })
 

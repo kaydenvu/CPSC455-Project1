@@ -252,6 +252,8 @@ try {
     } catch {
       return console.error("Invalid JSON from server:", e.data);
     }
+    console.log("Received message:", data);
+    console.log("Data type:", data.type);
     
     // Handle ping/pong for keeping connection alive
     if (data.type === 'ping') {
@@ -360,6 +362,26 @@ try {
 
         contentDiv.appendChild(link);
       }
+    } else if (data.type === 'file_link') {
+      // decrypt the URL
+      const iv = Uint8Array.from(atob(data.iv), c=>c.charCodeAt(0));
+      const ct = Uint8Array.from(atob(data.ct), c=>c.charCodeAt(0));
+      const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, sharedKey, ct);
+      const url = new TextDecoder().decode(pt);
+
+      // build your link
+      const link = document.createElement('a');
+      link.href = url;
+      link.textContent = `Download ${data.name}`;
+      link.target = '_blank';
+      link.rel = 'noopener';
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'chat-message';
+      messageDiv.appendChild(link);
+      log.appendChild(messageDiv);
+      log.scrollTop = log.scrollHeight;
+      return;
     } else
     // Handle file attachments
     if (data.file) {
@@ -577,15 +599,16 @@ if (fileInput) {
       if (useE2EE && sharedKey) {
         statusSpan.textContent = 'Encrypting file...';
 
-        // 1) encrypt
-        const buf = await file.arrayBuffer();
-        const iv  = crypto.getRandomValues(new Uint8Array(12));
-        const ct  = await crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv },
-          sharedKey,
-          buf
-        );
-        const blob = new Blob([iv, ct], { type: 'application/octet-stream' });
+        // // 1) encrypt
+        // const buf = await file.arrayBuffer();
+        // const iv  = crypto.getRandomValues(new Uint8Array(12));
+        // const ct  = await crypto.subtle.encrypt(
+        //   { name: 'AES-GCM', iv },
+        //   sharedKey,
+        //   buf
+        // );
+        // const blob = new Blob([iv, ct], { type: 'application/octet-stream' });
+        const blob = file;
 
         statusSpan.textContent = 'Uploading to server…';
 
@@ -593,16 +616,36 @@ if (fileInput) {
         const form = new FormData();
         form.append('file', blob, file.name);
 
-        const res = await fetch('/chat/api/upload-b2/', {
-          method:      'POST',
-          credentials: 'same-origin',
-          headers:     { 'X-CSRFToken': csrfToken },
-          body:         form
-        });
+        let res;
+        try {
+          res = await fetch('/chat/api/upload-b2/', {
+            method:      'POST',
+            credentials: 'same-origin',
+            headers:     { 'X-CSRFToken': csrfToken },
+            body:         form
+          });
+        } catch (networkErr) {
+          alert("Network error—please try again.");
+          console.error(networkErr);
+          clearInterval(interval);
+          messageDiv.remove();
+          fileInput.value = '';
+          return;
+        }
 
         if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`Upload failed: ${res.status}\n${txt}`);
+          let err = { error: `Upload failed: ${res.status}` };
+          try {
+            err = await res.json();
+          } catch (e) {
+            console.error('Invalid JSON error response', e);
+          }
+          // show a popup to the user
+          alert(payload.error);
+          clearInterval(interval);
+          messageDiv.remove();
+          fileInput.value = '';
+          return;
         }
 
         const { b2_key, download_url} = await res.json();
@@ -614,14 +657,27 @@ if (fileInput) {
             b2_key,
             name:      file.name,
             type:      file.type,
-            iv_length: iv.byteLength,
+            //iv_length: iv.byteLength,
             url:       `/chat/api/download-b2/${encodeURIComponent(b2_key)}/`
           }
         };
         safeSend(payload);
-        safeSend({message: `📎 Download file (${file.name}): ${download_url}`});
+        // AES‑GCM‐encrypt the URL text
+        const url = download_url;
+        const iv  = crypto.getRandomValues(new Uint8Array(12));
+        const pt  = new TextEncoder().encode(url);
+        const ctBuf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, sharedKey, pt);
+
+        // safeSend({
+        //   type: 'file_link',         // a new message type
+        //   message: `📎 Download file (${file.name}): ${download_url}`,
+        //   iv:   btoa(String.fromCharCode(...iv)),
+        //   ct:   btoa(String.fromCharCode(...new Uint8Array(ctBuf))),
+        //   name: file.name           // for display
+        // });
+        safeSend({message: `📎 Download file (${file.name}): ${download_url}`,});
         statusSpan.textContent = 'File uploaded successfully!';
-        console.log('File uploaded:', b2_key);
+        console.log('File uploaded:', b2_key, file.type, file.name);
       } else {
         // plaintext fallback
         statusSpan.textContent = 'Sharing file info only...';
