@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
 
 class UserProfile(models.Model):
     id = models.AutoField(primary_key=True, unique=True, editable=False, blank=True)
@@ -22,6 +23,27 @@ class Keys(models.Model):
 
     def __str__(self):
         return f"{self.user}"
+# Store room keys
+class RoomKey(models.Model):
+    room = models.ForeignKey(
+        "ChatRoom",
+        on_delete=models.CASCADE,
+        related_name="keys"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="room_keys"
+    )
+    public_key = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("room", "user")
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.user.username} @ {self.room.name}"
 
 class ChatRoom(models.Model):
     name = models.CharField(max_length=255, unique=True)

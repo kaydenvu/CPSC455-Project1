@@ -4,7 +4,11 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.http import JsonResponse 
 from datetime import timedelta
-from .models import ChatRoom, Keys
+from .models import ChatRoom, RoomKey
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 
 DEFAULT_ROOMS = ['room1', 'room2', 'room3']
 ROOMS = list(DEFAULT_ROOMS)
@@ -48,31 +52,40 @@ def room(request, room_name):
     })
 
 
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
 def room_keys(request):
-    room_name = request.GET.get('room')
+    # Expect ?room=<roomName>
+    room_name = request.query_params.get("room")
     if not room_name:
-        return JsonResponse({"error": "Missing room parameter"}, status=400)
-
+        return Response({"detail": "Missing room parameter"}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
-        ChatRoom.objects.get(name=room_name)
+        room = ChatRoom.objects.get(name=room_name)
     except ChatRoom.DoesNotExist:
-        return JsonResponse({"error": "Unknown room"}, status=404)
+        return Response({"detail": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Grab all Keys records (or filter by room membership if you prefer)
-    qs = Keys.objects.select_related('user').all()
-    data = []
-    for k in qs:
-        try:
-            jwk_obj = json.loads(k.public_key)  # parse the stored JSON string
-        except ValueError:
-            # if it's already a dict/string parse failed, just skip or handle
-            continue
-        data.append({
-            "user":       k.user.username,
-            "public_key": jwk_obj,
-        })
+    if request.method == "POST":
+        # Remove any existing key for this user in this room
+        RoomKey.objects.filter(room=room, user=request.user).delete()
+        # Create fresh one
+        RoomKey.objects.create(
+            room=room,
+            user=request.user,
+            public_key=request.data.get("public_key", {})
+        )
+        return Response(status=status.HTTP_201_CREATED)
 
-    return JsonResponse(data, safe=False)
+    # GET: return all keys for this room
+    keys = RoomKey.objects.filter(room=room)
+    return Response([
+        {
+            "user":        rk.user.username,
+            "public_key":  rk.public_key,
+            "created_at":  rk.created_at.isoformat()
+        }
+        for rk in keys
+    ])
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404, redirect
@@ -85,3 +98,45 @@ def clear_room_logs(request, room_name):
     count, _ = ChatMessage.objects.filter(room=room).delete()
     messages.success(request, f"Cleared {count} messages from '{room_name}'.")
     return redirect("index")
+
+import uuid
+from django.views.decorators.csrf import csrf_exempt
+from django.http               import JsonResponse, HttpResponseNotAllowed, HttpResponse
+from .b2_client                import upload_bytes, download_bytes, make_presigned_b2_url
+
+@csrf_exempt
+def upload_to_b2(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    f = request.FILES.get("file")
+    if not f:
+        return JsonResponse({"error": "No file provided"}, status=400)
+
+    data      = f.read()
+    # generate a unique key so you never overwrite
+    b2_key    = f"{uuid.uuid4().hex}_{f.name}"
+    result    = upload_bytes(data, b2_key)
+
+    download_url = make_presigned_b2_url(b2_key, valid_seconds=3600)
+
+    # result.file_name, result.file_id, result.content_sha1, etc are available
+    return JsonResponse({
+        "b2_key":      b2_key,
+        "file_id":     result.id_,
+        "file_name":   result.file_name,
+        "content_sha1":result.content_sha1,
+        "download_url": download_url,
+    })
+
+
+def download_from_b2(request, b2_key):
+    """
+    Streams the file back with the original Content-Type header.
+    """
+    try:
+        raw = download_bytes(b2_key)
+    except Exception:
+        return HttpResponse(status=404)
+    response = HttpResponse(raw, content_type="application/octet-stream")
+    response["Content-Disposition"] = f'attachment; filename="{b2_key.split("_",1)[1]}"'
+    return response

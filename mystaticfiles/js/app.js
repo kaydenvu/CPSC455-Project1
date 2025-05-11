@@ -1,10 +1,31 @@
 // static/js/app.js
 
+function getCookie(name) {
+  const match = document.cookie.match(
+    new RegExp('(?:^|; )' + name + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+const csrfToken = getCookie('csrftoken');
+
+
 ;(async function() {
   // Grab roomName from the embedded JSON
   const roomName = JSON.parse(document.getElementById('room-name').textContent);
   // Get username for presence tracking
   const username = JSON.parse(document.getElementById('username').textContent);
+
+  let pendingMessage = null;
+  function safeSend(payload) {
+    const msg = JSON.stringify(payload);
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(msg);
+    } else {
+      // queue it—will send once socket fires 'open'
+      pendingMessage = msg;
+    }
+  }
 
   // 1) Find all UI nodes
   const log = document.getElementById('chat-log');
@@ -21,33 +42,91 @@
   }
 
   // 2) Try E2EE (but don't let failure stop you)
-  let sharedKey = null, useE2EE = false;
-  try {
-    const privJwk = JSON.parse(localStorage.getItem('privateKeyJwk'));
-    const privateKey = await crypto.subtle.importKey(
-      'jwk', privJwk,
-      { name: 'ECDH', namedCurve: 'P-256' },
-      false, ['deriveKey']
+  let sharedKey = null, useE2EE = false, privateKey = null;
+
+try {
+  // 1) Ensure we have a keypair in localStorage
+  let stored = localStorage.getItem("ecdhKeypair");
+  let pubJwk, privJwkObj;
+
+  if (!stored) {
+    // generate a new ECDH keypair
+    const kp = await crypto.subtle.generateKey(
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      ["deriveKey"]
     );
-    const res = await fetch(`/chat/api/keys/?room=${encodeURIComponent(roomName)}`);
-    const peers = await res.json();
-    if (peers.length) {
-      const peerPub = await crypto.subtle.importKey(
-        'jwk', peers[0].public_key,
-        { name: 'ECDH', namedCurve: 'P-256' },
-        false, []
-      );
-      sharedKey = await crypto.subtle.deriveKey(
-        { name: 'ECDH', public: peerPub },
-        privateKey,
-        { name: 'AES-GCM', length: 256 },
-        false, ['encrypt','decrypt']
-      );
-      useE2EE = true;
-    }
-  } catch (err) {
-    console.warn("E2EE initialization failed, falling back to plaintext", err);
+    pubJwk      = await crypto.subtle.exportKey("jwk", kp.publicKey);
+    privJwkObj  = await crypto.subtle.exportKey("jwk", kp.privateKey);
+    // store both halves together
+    localStorage.setItem("ecdhKeypair", JSON.stringify({ pubJwk, privJwk: privJwkObj }));
+  } else {
+    // load both halves
+    const parsed = JSON.parse(stored);
+    pubJwk     = parsed.pubJwk;
+    privJwkObj = parsed.privJwk;
   }
+
+  // 2) Always re-post our public JWK so the server record stays fresh
+  await fetch(`/chat/api/keys/?room=${encodeURIComponent(roomName)}`, {
+    method:      'POST',
+    credentials: 'same-origin',         // send the CSRF cookie
+    headers: {
+      'Content-Type':  'application/json',
+      'X-CSRFToken':    csrfToken       // include the CSRF token
+    },
+    body: JSON.stringify({
+      user:       username,
+      public_key: pubJwk
+    })
+  });
+
+  // 3) Import our private key
+  privateKey = await crypto.subtle.importKey(
+    "jwk",
+    privJwkObj,
+    { name: "ECDH", namedCurve: "P-256" },
+    false,
+    ["deriveKey"]
+  );
+
+  // 4) Fetch everyone’s public keys for this room
+  const peers = await fetch(`/chat/api/keys/?room=${encodeURIComponent(roomName)}`)
+    .then(r => r.json());
+
+  // 5) Pick the other user’s most recent key
+  const sorted = peers
+    .filter(p => p.user !== username)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const other = sorted[0];
+
+  if (other) {
+    // 6) Import their public key and derive sharedKey
+    const peerPub = await crypto.subtle.importKey(
+      "jwk",
+      other.public_key,
+      { name: "ECDH", namedCurve: "P-256" },
+      false,
+      []
+    );
+
+    sharedKey = await crypto.subtle.deriveKey(
+      { name: "ECDH", public: peerPub },
+      privateKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+
+    console.log("✅ Derived shared key with", other.user);
+    useE2EE = true;
+  } else {
+    console.warn("🔒 Waiting for peer’s public key…");
+  }
+} catch (err) {
+  console.warn("E2EE initialization failed, falling back to plaintext", err);
+}
+
 
   // 3) Open the socket & bind handlers
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -121,84 +200,34 @@
 
   // File download handler function
   async function handleFileDownload(e) {
-    const fileId = e.target.getAttribute('data-file-id');
-    if (!fileId) return;
-    
-    // Get file data from session storage
-    const fileDataStr = sessionStorage.getItem(fileId);
-    if (!fileDataStr) {
-      alert('File information not available');
-      return;
-    }
-    
-    const fileData = JSON.parse(fileDataStr);
-    console.log('Downloading file:', fileData);
-    
-    try {
-      // Show download status
-      e.target.textContent = 'Downloading...';
-      e.target.disabled = true;
-      
-      // Fetch the encrypted file
-      const response = await fetch(fileData.url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      // Get the encrypted data
-      const encryptedData = await response.arrayBuffer();
-      
-      // If we have encrypted data and a shared key, decrypt it
-      if (useE2EE && sharedKey && fileData.ivLength > 0) {
-        // Extract IV and ciphertext
-        const iv = new Uint8Array(encryptedData.slice(0, fileData.ivLength));
-        const ct = new Uint8Array(encryptedData.slice(fileData.ivLength));
-        
-        // Decrypt the file
-        const decryptedBuffer = await crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv },
-          sharedKey,
-          ct
-        );
-        
-        // Create a blob from the decrypted data
-        const blob = new Blob([decryptedBuffer], { type: fileData.type });
-        
-        // Create download link
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileData.name;
-        document.body.appendChild(a);
-        a.click();
-        
-        // Clean up
-        window.setTimeout(() => {
-          URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        }, 0);
-        
-        e.target.textContent = `Download ${fileData.name}`;
-        e.target.disabled = false;
-      } else {
-        // For non-encrypted files or if decryption isn't available
-        // Just open the URL directly
-        window.open(fileData.url, '_blank');
-        e.target.textContent = `Download ${fileData.name}`;
-        e.target.disabled = false;
-      }
-    } catch (error) {
-      console.error('Download failed:', error);
-      e.target.textContent = 'Download failed';
-      alert(`Failed to download file: ${error.message}`);
-      
-      // Reset after a delay
-      setTimeout(() => {
-        e.target.textContent = `Download ${fileData.name}`;
-        e.target.disabled = false;
-      }, 3000);
-    }
+  const fileData = JSON.parse(sessionStorage.getItem(e.target.dataset.fileId));
+
+  // 1) Fetch encrypted bytes from your proxy
+  const res = await fetch(fileData.url, {
+    credentials: 'same-origin',       // send session cookie
+    headers:     { 'X-CSRFToken': csrfToken }
+  });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+
+  const encrypted = await res.arrayBuffer();
+
+  // 2) Decrypt if needed (same as before)
+  if (useE2EE && sharedKey && fileData.iv_length) {
+    const iv  = new Uint8Array(encrypted.slice(0, fileData.iv_length));
+    const ct  = new Uint8Array(encrypted.slice(fileData.iv_length));
+    const pt  = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      sharedKey,
+      ct
+    );
+    const blob = new Blob([pt], { type: fileData.type });
+    // … create <a> and download …
+  } else {
+    // fallback
+    window.open(fileData.url, '_blank');
   }
+}
+
 
   // Socket open handler
   socket.onopen = () => {
@@ -289,6 +318,25 @@
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
     
+    if (text.startsWith("📎")) {
+    // 1) Extract the URL (first http:// or https:// to next whitespace)
+    const urlMatch  = text.match(/https?:\/\/[^\s]+/);
+    // 2) Extract the filename (inside the first pair of parentheses)
+    const nameMatch = text.match(/\(([^)]+)\)/);
+
+      if (urlMatch) {
+        const url      = urlMatch[0];
+        const fileName = nameMatch ? nameMatch[1] : "file";
+
+        const link = document.createElement("a");
+        link.href       = url;
+        link.textContent= `Download ${fileName}`;
+        link.target     = "_blank";
+        link.rel        = "noopener";
+
+        contentDiv.appendChild(link);
+      }
+    } else
     // Handle file attachments
     if (data.file) {
       const fileType = data.file.type || '';
@@ -469,126 +517,107 @@
   // Handle page unload
   window.addEventListener('beforeunload', () => socket.close());
 
-  // File upload handling
-  if (fileInput) {
-    fileInput.onchange = async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      // Create a temporary message showing upload progress
-      const dt = new Date();
-      const dateStr = dt.toLocaleDateString();
-      const timeStr = dt.toLocaleTimeString();
-      const label = `${dateStr} ${timeStr}`;
-      
-      // Create progress message
-      const messageDiv = document.createElement('div');
-      messageDiv.className = 'chat-message uploading';
-      
-      const metaSpan = document.createElement('div');
-      metaSpan.className = 'message-meta';
-      metaSpan.innerHTML = `<span class="timestamp">[${label}]</span> <span class="username">${username}:</span>`;
-      
-      const contentDiv = document.createElement('div');
-      contentDiv.className = 'message-content';
-      
-      const fileInfoSpan = document.createElement('div');
-      fileInfoSpan.className = 'file-info';
-      fileInfoSpan.textContent = `Uploading: ${file.name}`;
-      
-      const progressBar = document.createElement('div');
-      progressBar.className = 'upload-progress';
-      
-      const statusSpan = document.createElement('div');
-      statusSpan.className = 'upload-status';
-      statusSpan.textContent = 'Processing...';
-      
-      contentDiv.appendChild(fileInfoSpan);
-      contentDiv.appendChild(progressBar);
-      contentDiv.appendChild(statusSpan);
-      
-      messageDiv.appendChild(metaSpan);
-      messageDiv.appendChild(contentDiv);
-      
-      log.appendChild(messageDiv);
-      log.scrollTop = log.scrollHeight;
+// File upload handling
+if (fileInput) {
+  fileInput.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-      try {
-        // Animate progress bar to show activity
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-          progress += 5;
-          if (progress > 90) {
-            progress = 90; // Cap at 90% until complete
-          }
-          progressBar.style.width = `${progress}%`;
-        }, 200);
-        
-        // Handle file based on encryption status
-        if (useE2EE && sharedKey) {
-          statusSpan.textContent = 'Encrypting file...';
-          
-          // Read file as ArrayBuffer
-          const buf = await file.arrayBuffer();
-          
-          // Generate IV for encryption
-          const iv = crypto.getRandomValues(new Uint8Array(12));
-          
-          statusSpan.textContent = 'Uploading encrypted file...';
-          
-          // Encrypt file content
-          const ctBuf = await crypto.subtle.encrypt(
-            { name: "AES-GCM", iv },
-            sharedKey,
-            buf
-          );
-          
-          // Base64-encode IV + ciphertext
-          const iv_b64 = btoa(String.fromCharCode(...iv));
-          const ct_b64 = btoa(String.fromCharCode(...new Uint8Array(ctBuf)));
-          
-          // Send via WebSocket with metadata
-          socket.send(JSON.stringify({
-            file: {
-              name: file.name,
-              type: file.type,
-              iv: iv_b64,
-              ct: ct_b64,
-            }
-          }));
-          
-          // Complete the progress bar
-          clearInterval(progressInterval);
-          progressBar.style.width = '100%';
-          
-          // Remove the upload message after successful upload
-          setTimeout(() => {
-            if (messageDiv.parentNode) {
-              messageDiv.parentNode.removeChild(messageDiv);
-            }
-          }, 1000);
-        } else {
-          statusSpan.textContent = 'Uploading file...';
-          
-          // For unencrypted file transfer
-          // Since the server is already set up for encrypted file handling,
-          // we fall back to a simpler message-only approach when encryption is unavailable
-          socket.send(JSON.stringify({ 
-            message: `[Shared a file: ${file.name}]` 
-          }));
-          
-          statusSpan.textContent = 'Encryption not available. Sharing file info only.';
-          clearInterval(progressInterval);
-          progressBar.style.width = '100%';
+    // Create a temporary “uploading” message
+    const dt    = new Date();
+    const label = `[${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}] ${username}:`;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message uploading';
+    messageDiv.innerHTML = `
+      <div class="message-meta">${label}</div>
+      <div class="message-content">
+        <div class="file-info">Uploading: ${file.name}</div>
+        <div class="upload-progress"></div>
+        <div class="upload-status">Processing...</div>
+      </div>
+    `;
+    log.appendChild(messageDiv);
+    log.scrollTop = log.scrollHeight;
+
+    const progressBar = messageDiv.querySelector('.upload-progress');
+    const statusSpan = messageDiv.querySelector('.upload-status');
+
+    try {
+      // Animate progress bar
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress = Math.min(progress + 5, 90);
+        progressBar.style.width = `${progress}%`;
+      }, 200);
+
+      if (useE2EE && sharedKey) {
+        statusSpan.textContent = 'Encrypting file...';
+
+        // 1) encrypt
+        const buf = await file.arrayBuffer();
+        const iv  = crypto.getRandomValues(new Uint8Array(12));
+        const ct  = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          sharedKey,
+          buf
+        );
+        const blob = new Blob([iv, ct], { type: 'application/octet-stream' });
+
+        statusSpan.textContent = 'Uploading to server…';
+
+        // 2) POST to Django proxy
+        const form = new FormData();
+        form.append('file', blob, file.name);
+
+        const res = await fetch('/chat/api/upload-b2/', {
+          method:      'POST',
+          credentials: 'same-origin',
+          headers:     { 'X-CSRFToken': csrfToken },
+          body:         form
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`Upload failed: ${res.status}\n${txt}`);
         }
-      } catch (error) {
-        console.error("File upload failed:", error);
-        statusSpan.textContent = `Upload failed: ${error.message}`;
-        progressBar.style.backgroundColor = '#dc3545'; // Red for error
+
+        const { b2_key, download_url} = await res.json();
+
+        // 3) Notify via WebSocket
+        const payload = {
+          type: 'chat.message',
+          file: {
+            b2_key,
+            name:      file.name,
+            type:      file.type,
+            iv_length: iv.byteLength,
+            url:       `/chat/api/download-b2/${encodeURIComponent(b2_key)}/`
+          }
+        };
+        safeSend(payload);
+        safeSend({message: `📎 Download file (${file.name}): ${download_url}`});
+        statusSpan.textContent = 'File uploaded successfully!';
+        console.log('File uploaded:', b2_key);
+      } else {
+        // plaintext fallback
+        statusSpan.textContent = 'Sharing file info only...';
+        socket.send(JSON.stringify({
+          message: `[Shared a file: ${file.name}]`
+        }));
       }
-      
-      // Reset file input so the same file can be selected again
-      fileInput.value = '';
-    };
-  }
+
+      // finish progress & cleanup
+      clearInterval(interval);
+      progressBar.style.width = '100%';
+      setTimeout(() => messageDiv.remove(), 1000);
+    } catch (err) {
+      console.error('File upload failed:', err);
+      statusSpan.textContent = `Upload failed: ${err.message}`;
+      progressBar.style.backgroundColor = '#dc3545';
+    }
+
+    fileInput.value = '';
+  };
+}
+
 })();

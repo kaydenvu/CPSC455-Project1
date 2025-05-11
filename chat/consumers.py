@@ -170,7 +170,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps(presence_list))
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            # bad payload—log and ignore instead of crash
+            print("Bad payload: %r", text_data)
+            return
         
         # Handle ping/pong
         if data.get("type") == "ping":
