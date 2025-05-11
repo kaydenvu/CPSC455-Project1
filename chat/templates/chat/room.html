@@ -65,6 +65,11 @@
         <div class="chat-input-group">
           <input id="chat-message-input" type="text" placeholder="Type your message…">
 
+          <!-- Emoji Picker Button -->
+          <button id="emoji-button" class="emoji-button" type="button" aria-label="Emoji picker">
+            😊
+          </button>
+
           
           <div class="file-upload-container">
             <label for="chat-file-input" class="file-upload-label">📎</label>
@@ -93,6 +98,9 @@
     // construct the keys‑fetch URL prefix
     window.KEYS_URL = "{% url 'room-keys' %}?room=";
   </script>
+
+   <!-- Script for emoji selection -->
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@3.1.1/dist/index.min.js"></script>
 
   <!-- load your chat‐app script with defer so it runs after the DOM is parsed -->
   <script defer src="{% static 'js/app.js' %}?v={{ STATIC_VERSION }}"></script>
