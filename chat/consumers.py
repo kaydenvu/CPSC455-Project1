@@ -9,6 +9,8 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from datetime import timedelta
 from collections import defaultdict
+import html
+import re
 
 from .models import ChatRoom, ChatMessage
 
@@ -281,12 +283,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if not iv_b64 or not ct_b64:
                 return
             # Decode and store encrypted blob
-            iv = base64.b64decode(iv_b64)
-            ct = base64.b64decode(ct_b64)
-            raw = iv + ct
+            try:
+                iv = base64.b64decode(iv_b64)
+                ct = base64.b64decode(ct_b64)
+                raw = iv + ct
+            except:
+                #invalid base64 data
+                return
+
             # Generate unique filename
-            orig_name = file_info.get('name', 'file')
-            ext = orig_name.split('.')[-1]
+            orig_name = sanitize_filename(file_info.get('name', 'file'))
+            ext = sanitize_filename(orig_name.split('.')[-1])
+            if not ext or len(ext) > 10:
+                ext = 'bin'
+
             filename = f"{uuid.uuid4().hex}.{ext}.enc"
             path = default_storage.save(filename, ContentFile(raw))
             url = default_storage.url(path)
@@ -402,3 +412,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user=user if user and user.is_authenticated else None,
             content=content
         )
+
+    def sanitize_input(text):
+            # Sanitize any text input to prevent XSS attacks
+            if not instance(text, str):
+                return ""
+
+                sanitized = html.escape(texr)
+
+                max_length = 2000
+                sanitize = sanitized[:max_length]
+
+                return sanitized
+
+        def sanitize_filename(filename):
+            # Sanitize file inputs
+            if not isinstance(filename, str):
+                return "file"
+
+            # Remove file path componenets
+            filename = re.sub(r'.*[/\\]', '', filename)
+        
+            # Only allow certain characters
+            filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
+            
+            # Ensure filename isn't empty
+            if not filename:
+                filename = "file"
+                
+            # Limit length
+            max_length = 100
+            filename = filename[:max_length]
+            
+            return filename

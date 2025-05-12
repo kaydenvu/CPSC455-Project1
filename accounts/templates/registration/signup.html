@@ -14,30 +14,41 @@
       <div class="fact"><strong>Random Fact:</strong> {{ fact.fact }}</div>
     {% endif %}
 
-    <form id="signup-form" method="POST">
+    <form id="signup-form" method="POST" onsubmit="return validateForm()">
       {% csrf_token %}
 
       <div class="form-field">
         <label for="username">Username</label>
-        <input type="text" name="username" id="username" required>
+        <input type="text" name="username" id="username" required minlength="5" maxlength="20" pattern="[A-Za-z0-9@.+_-]+" title="Username can only contain letters, numbers, and @/./+/-/_ characters">
       </div>
+      
       <div class="form-field">
         <label for="password1">Password</label>
-        <input type="password" name="password1" id="password1" required>
+        <input type="password" name="password1" id="password1" required minlength="8" oninput="checkPasswordRequirements()">
+        <div id="password-requirements">
+          <div id="req-length">• At least 8 characters</div>
+          <div id="req-uppercase">• At least one uppercase letter</div>
+          <div id="req-lowercase">• At least one lowercase letter</div>
+          <div id="req-number">• At least one number</div>
+          <div id="req-special">• At least one special character</div>
+        </div>
       </div>
+      
       <div class="form-field">
         <label for="password2">Confirm Password</label>
-        <input type="password" name="password2" id="password2" required>
+        <input type="password" name="password2" id="password2" required oninput="checkPasswordsMatch()">
+        <div id="password-match"></div>
       </div>
 
       <!-- Hidden field for public key JWK -->
       <input type="hidden" name="public_key" id="public_key">
 
-      <button type="submit">Sign Up</button>
+      <button type="submit" id="submit-button">Sign Up</button>
     </form>
   </div>
 
   <script>
+    // E2EE Key generation (keeping your original code)
     document.addEventListener('DOMContentLoaded', async () => {
       if (!window.crypto || !window.crypto.subtle) {
         console.error("Web Crypto API not available. Must be served over HTTPS or localhost.");
@@ -67,7 +78,98 @@
         console.error("❌ E2EE key generation failed:", err);
         alert("Could not generate encryption keys. Please refresh the page and try again.");
       }
+      
+      // Initialize password validation display
+      checkPasswordRequirements();
     });
+    
+    // Password requirements checking
+    function checkPasswordRequirements() {
+      const password = document.getElementById('password1').value;
+      
+      // Check requirements
+      const hasLength = password.length >= 8;
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      
+      // Update requirement indicators
+      document.getElementById('req-length').textContent = 
+        '• At least 8 characters ' + (hasLength ? '✓' : '✗');
+      document.getElementById('req-uppercase').textContent = 
+        '• At least one uppercase letter ' + (hasUppercase ? '✓' : '✗');
+      document.getElementById('req-lowercase').textContent = 
+        '• At least one lowercase letter ' + (hasLowercase ? '✓' : '✗');
+      document.getElementById('req-number').textContent = 
+        '• At least one number ' + (hasNumber ? '✓' : '✗');
+      document.getElementById('req-special').textContent = 
+        '• At least one special character ' + (hasSpecial ? '✓' : '✗');
+      
+      // Also check password match if confirm password field has a value
+      if (document.getElementById('password2').value) {
+        checkPasswordsMatch();
+      }
+    }
+    
+    // Check if passwords match
+    function checkPasswordsMatch() {
+      const password1 = document.getElementById('password1').value;
+      const password2 = document.getElementById('password2').value;
+      const matchDisplay = document.getElementById('password-match');
+      
+      if (password2.length === 0) {
+        matchDisplay.textContent = '';
+      } else if (password1 === password2) {
+        matchDisplay.textContent = 'Passwords match! ✓';
+      } else {
+        matchDisplay.textContent = 'Passwords do not match! ✗';
+      }
+    }
+    
+    // Form validation before submit
+    function validateForm() {
+      const password1 = document.getElementById('password1').value;
+      const password2 = document.getElementById('password2').value;
+      
+      // Check password length
+      if (password1.length < 8) {
+        alert('Password must be at least 8 characters long.');
+        return false;
+      }
+      
+      // Check for uppercase letters
+      if (!/[A-Z]/.test(password1)) {
+        alert('Password must contain at least one uppercase letter.');
+        return false;
+      }
+      
+      // Check for lowercase letters
+      if (!/[a-z]/.test(password1)) {
+        alert('Password must contain at least one lowercase letter.');
+        return false;
+      }
+      
+      // Check for numbers
+      if (!/[0-9]/.test(password1)) {
+        alert('Password must contain at least one number.');
+        return false;
+      }
+      
+      // Check for special characters
+      if (!/[^A-Za-z0-9]/.test(password1)) {
+        alert('Password must contain at least one special character.');
+        return false;
+      }
+      
+      // Check if passwords match
+      if (password1 !== password2) {
+        alert('Passwords do not match.');
+        return false;
+      }
+      
+      return true;
+    }
   </script>
 </body>
 </html>
