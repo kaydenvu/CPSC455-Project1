@@ -43,3 +43,5 @@ Then, open your browser and go to ``` http://127.0.0.1:8000 ``` to access the ap
 
 ### 4. Stopping the Server
 To stop the server, use <mark>Ctrl+C</mark> in the terminal where the server is running.
+
+Note: most recent commit is not rendering on the deployed website (strong password policy)
