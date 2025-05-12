@@ -425,23 +425,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                 return sanitized
 
-        def sanitize_filename(filename):
-            # Sanitize file inputs
-            if not isinstance(filename, str):
-                return "file"
+    def sanitize_filename(filename):
+        # Sanitize file inputs
+        if not isinstance(filename, str):
+            return "file"
 
-            # Remove file path componenets
-            filename = re.sub(r'.*[/\\]', '', filename)
+        # Remove file path componenets
+        filename = re.sub(r'.*[/\\]', '', filename)
+    
+        # Only allow certain characters
+        filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
         
-            # Only allow certain characters
-            filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
+        # Ensure filename isn't empty
+        if not filename:
+            filename = "file"
             
-            # Ensure filename isn't empty
-            if not filename:
-                filename = "file"
-                
-            # Limit length
-            max_length = 100
-            filename = filename[:max_length]
-            
-            return filename
+        # Limit length
+        max_length = 100
+        filename = filename[:max_length]
+        
+        return filename
