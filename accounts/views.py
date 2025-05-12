@@ -5,6 +5,8 @@ from chat.models import UserProfile, Keys
 from accounts.models import user_type
 from django.views.decorators.csrf import csrf_exempt
 from mynewsite.settings import TRUSTED_DOMAINS as domain
+import html
+import json
 
 @csrf_exempt
 def Signup(request):
@@ -30,43 +32,66 @@ def Signup(request):
     # Process the POST request to create a new user
     if request.method == "POST":
         # Get the current host
-        curr_host = request.META.get("HTTP_HOST")
+        curr_host = request.META.get("HTTP_HOST", "")
         # Ensure the host starts with "http"
         if not curr_host.startswith("http"):
             curr_host1 = "https://" + curr_host
             curr_host2 = "http://" + curr_host
-        # Check if the host matches the domain
-        #if curr_host1 != domain and curr_host2 != domain:
-        #    return HttpResponse("<script>alert('Invalid Request!'); window.location.href='/login';</script>")
-        # Copy the POST data and modify the email field
+        
+        # Copy the POST data
         data = request.POST.copy()
         request.POST = data
-        # Create the signup form with the modified POST data
+        
+        # Create the signup form with the POST data
         form = SignUpForm(request.POST)
 
         # Validate the form
         if form.is_valid():
-            # Get the form data
+            # Get the form data (already validated)
             username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get("password1")
+            
             # Save the new user
             user = form.save()
+            
             # Create and save the user's profile
             profile = UserProfile(username=username)
             profile.save()
+            
             # Grab the generated public_key JWK from the hidden field
             public_key_jwk = request.POST.get("public_key")
             if public_key_jwk:
-                Keys.objects.create(user=profile, public_key=public_key_jwk)
+                # Validate it's proper JSON before saving
+                try:
+                    json.loads(public_key_jwk)
+                    Keys.objects.create(user=profile, public_key=public_key_jwk)
+                except json.JSONDecodeError:
+                    # If the public key is invalid JSON, continue but log the error
+                    # We don't want to block signup for this
+                    print("Error: Invalid public key JSON format")
+            
             # Create and save the user type
             user_type_obj = user_type(user=user, type="regular")
             user_type_obj.save()
+            
             # Redirect to the login page
             return redirect("/login")
         else:
-            # If the form is invalid, return an error message
+            # Extract and format error messages for better display
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            
+            # Join all errors with line breaks
+            error_text = "\\n".join(error_messages)
+            # Escape the error text for safe inclusion in JavaScript
+            safe_error = html.escape(error_text)
+            
+            # Return a more informative error message
             return HttpResponse(
-                "<script>alert('Please enter valid details!'); window.location.href='/register';</script>")
+                f"<script>alert('Please correct these errors: {safe_error}'); window.location.href='/register';</script>")
+    
+    # For GET requests, render the signup page
     return render(request, "registration/signup.html")
 
 
