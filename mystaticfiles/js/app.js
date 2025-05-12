@@ -1,5 +1,11 @@
 // static/js/app.js
 
+// Sanitizing function used later in file handling
+function sanitizeHtml(text){
+  const element = document.createElement('div');
+  element.textContent = text;
+  return element.textContent; // returns sanitized text
+}
 function getCookie(name) {
   const match = document.cookie.match(
     new RegExp('(?:^|; )' + name + '=([^;]*)')
@@ -438,13 +444,13 @@ try {
     } else
     // Handle file attachments
     if (data.file) {
-      const fileType = data.file.type || '';
-      const fileName = data.file.name || 'file';
+      const fileType = sanitizeHtml(data.file.type || '');
+      const fileName = sanitizeHtml(data.file.name || 'file');
       
       // Make sure we have a valid URL
-      const fileUrl = data.file.url.startsWith('/') 
-        ? window.location.origin + data.file.url
-        : window.location.origin + '/' + data.file.url;
+      const fileUrl = sanitizeHtml(data.file.url.startsWith('/')) 
+        ? window.location.origin + sanitizeHtml(data.file.url)
+        : window.location.origin + '/' + sanitizeHtml(data.file.url);
       
       // Log file information for debugging
       console.log('Received file:', {
