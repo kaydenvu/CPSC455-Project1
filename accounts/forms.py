@@ -77,7 +77,7 @@ class SignUpForm(forms.Form):
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')
         
-        # Skip this check if password1 has errors (it will be caught in clean_password1)
+        # Skip this check if password1 has errors (it will be caught in clean_password1) 
         if password1 and password1 != password2:
             raise ValidationError("Passwords don't match.")
         return password2
