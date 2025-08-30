@@ -1,3 +1,16 @@
+<img width="462" height="368" alt="Screenshot 2025-08-29 at 6 50 40 PM" src="https://github.com/user-attachments/assets/a3835e04-4966-4795-ac3b-35a1b43eac92" />
+
+<img width="840" height="617" alt="Screenshot 2025-08-29 at 6 55 18 PM" src="https://github.com/user-attachments/assets/d465c963-67d5-47f8-b39f-210813aef389" />
+<img width="913" height="252" alt="Screenshot 2025-08-29 at 6 58 43 PM" src="https://github.com/user-attachments/assets/3a920464-05b6-48dd-b890-3a295a4cb66c" />
+
+
+https://github.com/user-attachments/assets/d405d2e0-eac2-4b86-a639-7c7a27014659
+
+
+
+
+
+
 # WebSocket Server-Client Application
 This project consists of a WebSocket server built with Django Channels for client applications that communicate with the server asynchronously.
 ## Prerequisites
