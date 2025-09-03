@@ -1,7 +1,7 @@
 ## 🔐 Login to CoffeeChat App: https://coffeechat.secure-tech.org/
 > Built using **Django**, **WebSockets**, and **MySQL**, hosted 24/7 for reliable access.
 
-Welcome to **CoffeeChat**, a fully encrypted, real-time chat platform designed with privacy, performance, and usability in mind.
+Welcome to **CoffeeChat**, a fully encrypted, real-time chat platform designed with privacy, performance, and usability in mind. One or more clients are able to chat with each other when they access the website and join a room!
 
 This login page is your secure gateway into a feature-rich communication environment. After authentication, users gain access to a live messaging interface built on WebSockets and backed by a Django server, with full end-to-end encryption and secure file sharing.
 
@@ -9,23 +9,36 @@ This login page is your secure gateway into a feature-rich communication environ
 
 ---
 > ✅ **Login Required**  
-Please enter your credentials to continue. If you don’t have an account yet, head over to the [Registration Page](#) to get started.
+Please enter your credentials to continue. If you don’t have an account yet, head over to the [[Registration Page](https://coffeechat.secure-tech.org/register/)``](#) to get started.
+
+
+### Strong Password Policy 
+Secure your credentials with our strong password policy. Your password will be encrypted and stored in the database. Ensure to satisfy the requirements before confirming your password!
+
+
+
+<img width="347" height="320" alt="Screenshot 2025-09-02 at 4 36 20 PM" src="https://github.com/user-attachments/assets/9975e9e8-ee52-49a2-b113-2b759f7aa552" />
+
+
+### Brute Force Protection
+To prevent attackers from accessing your account, we limit our password attempts to five! If all five attempts are up, you are timed out from log in for 15 minutes.
+
+<img width="913" height="252" alt="Screenshot 2025-08-29 at 6 58 43 PM" src="https://github.com/user-attachments/assets/3a920464-05b6-48dd-b890-3a295a4cb66c" />
+
+
 ---
+
+
 ### ✨ Features Available After Login:
 
 - **🔐 End-to-End Encrypted Messaging**  
   Messages are encrypted on the client-side before transmission and stored as encrypted blobs on the server. Only the intended recipient can decrypt and read them.
 
-- **🛡️ Secure Authentication**  
-  Login is protected by:
-  - Strict password policy
-  - Password hashing
-  - Input sanitization
-  - Brute-force protection
-  - Rate limiting
- 
-
-<img width="913" height="252" alt="Screenshot 2025-08-29 at 6 58 43 PM" src="https://github.com/user-attachments/assets/3a920464-05b6-48dd-b890-3a295a4cb66c" />
+- **🟢 Online/Offline Presence Detection**  
+  Know when your contacts are online, offline, or typing using heartbeat ping/pong mechanisms and server-side presence tracking.
+   **😊 Emoji Support**  
+  Make your chats more expressive with a built-in emoji selector.
+  - ** Rate limiting
 
 https://github.com/user-attachments/assets/d405d2e0-eac2-4b86-a639-7c7a27014659
 
@@ -34,14 +47,9 @@ https://github.com/user-attachments/assets/d405d2e0-eac2-4b86-a639-7c7a27014659
 - **💬 Real-Time Chat via WebSockets**  
   Chat with friends in real time using persistent WebSocket connections. Experience fast delivery, typing indicators, and live updates.
 
-- **🟢 Online/Offline Presence Detection**  
-  Know when your contacts are online, offline, or typing using heartbeat ping/pong mechanisms and server-side presence tracking.
-
 - **📎 Encrypted File Sharing**  
-  Upload and share files safely. All files are validated client-side and uploaded to secure cloud storage (e.g., Firebase or IPFS), with links scanned using VirusTotal.
+  Upload and share files safely. All files are validated client-side and uploaded to secure cloud storage with links scanned using VirusTotal.
 
-- **😊 Emoji Support**  
-  Make your chats more expressive with a built-in emoji selector.
 
 - **🌐 24/7 Hosted Infrastructure**  
   Hosted using a combination of InfinityFree (for frontend and APIs), and Render/Vercel (for WebSocket backend), ensuring high availability and fast response times.
@@ -50,8 +58,6 @@ https://github.com/user-attachments/assets/d405d2e0-eac2-4b86-a639-7c7a27014659
 <img width="840" height="617" alt="Screenshot 2025-08-29 at 6 55 18 PM" src="https://github.com/user-attachments/assets/d465c963-67d5-47f8-b39f-210813aef389" />
 
 ---
-
-
 
 
 
