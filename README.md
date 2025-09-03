@@ -31,27 +31,33 @@ To prevent attackers from accessing your account, we limit our password attempts
 
 ### ✨ Features Available After Login:
 
-- **🔐 End-to-End Encrypted Messaging**  
+**🔐 End-to-End Encrypted Messaging**  
   Messages are encrypted on the client-side before transmission and stored as encrypted blobs on the server. Only the intended recipient can decrypt and read them.
 
-- **🟢 Online/Offline Presence Detection**  
+
+
+**🟢 Online/Offline Presence Detection**  
   Know when your contacts are online, offline, or typing using heartbeat ping/pong mechanisms and server-side presence tracking.
-   **😊 Emoji Support**  
-  Make your chats more expressive with a built-in emoji selector.
-  - ** Rate limiting
+
+  
+**😊 Emoji Support**  
+Make your chats more expressive with a built-in emoji selector.
+
+  
+** Rate limiting
 
 https://github.com/user-attachments/assets/d405d2e0-eac2-4b86-a639-7c7a27014659
 
 
 
-- **💬 Real-Time Chat via WebSockets**  
+**💬 Real-Time Chat via WebSockets**  
   Chat with friends in real time using persistent WebSocket connections. Experience fast delivery, typing indicators, and live updates.
 
-- **📎 Encrypted File Sharing**  
+**📎 Encrypted File Sharing**  
   Upload and share files safely. All files are validated client-side and uploaded to secure cloud storage with links scanned using VirusTotal.
 
 
-- **🌐 24/7 Hosted Infrastructure**  
+**🌐 24/7 Hosted Infrastructure**  
   Hosted using a combination of InfinityFree (for frontend and APIs), and Render/Vercel (for WebSocket backend), ensuring high availability and fast response times.
 
   
